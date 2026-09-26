@@ -680,14 +680,18 @@ async function gh(path, opts = {}) {
   }
   return res.json();
 }
+// あみものノートのGistを探す。いくつもある場合は、いちばん最近更新されたものを使う
+let gistCount = 0;
 async function findGist() {
+  const found = [];
   for (let page = 1; page <= 10; page++) {
     const list = await gh(`/gists?per_page=100&page=${page}`);
-    const g = list.find(g => g.files && g.files[FILE]);
-    if (g) return g.id;
+    list.forEach(g => { if (g.files && g.files[FILE]) found.push(g); });
     if (list.length < 100) break;
   }
-  return null;
+  gistCount = found.length;
+  found.sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''));
+  return found[0]?.id || null;
 }
 async function readGist() {
   const g = await gh('/gists/' + sync.gistId);
@@ -1275,6 +1279,8 @@ function settingsView() {
     <div class="section-title" style="margin-top:0">${ic('cloud')}クラウド保存（GitHub Gist）</div>
     ${st}
     <p>変更は自動で保存されます。ほかの端末でも同じトークンを入れると、同じデータを使えます。</p>
+    ${sync.gistId ? `<p class="note">保存先：…${esc(sync.gistId.slice(-6))}（端末どうしでこの文字が同じなら、同じ保存先です）</p>` : ''}
+    ${gistCount > 1 ? `<p class="warn">あみものノートの保存先が ${gistCount} 個見つかりました。いちばん新しいものを使っています。</p>` : ''}
     <button class="btn outline block" data-action="syncnow">${ic('reset')}今すぐ同期する</button>
     <button class="btn danger block" data-action="disconnect">${ic('cloudOff')}クラウド保存をやめる</button>
   </div>${wakePanel()}${count}</main>`;
@@ -1506,7 +1512,7 @@ document.addEventListener('click', e => {
       if (!t) { toast('トークンを入力してください'); return; }
       connect(t); break;
     }
-    case 'syncnow': if (dirty) flush(); else pull(); break;
+    case 'syncnow': if (dirty) flush(); else { sync.gistId = null; pull(); } break;   // 保存先も探し直す
     case 'disconnect':
       askConfirm('クラウド保存をやめますか？', { ok: 'やめる', cancel: '続ける', danger: true, sub: 'クラウドのデータは消えません。トークンを入れ直せば再開できます' }).then(ok => { if (ok) disconnect(); });
       break;
