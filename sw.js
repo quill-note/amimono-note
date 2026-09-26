@@ -1,6 +1,6 @@
 // オフライン対応用。ネット優先で最新を取りに行き、つながらないときだけキャッシュを使う。
 // （GitHubで更新したのに反映されない…を避けるため）
-const CACHE = 'amimono-note-v2';
+const CACHE = 'amimono-note-v3';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -9,7 +9,9 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))));
+  // 同じ quill-note.github.io のほかのアプリ（writing-studio など）のキャッシュは消さない。
+  // 自分の古いキャッシュ（amimono-note-…）だけを片付ける
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('amimono-note') && k !== CACHE).map(k => caches.delete(k)))));
   self.clients.claim();
 });
 
@@ -22,7 +24,7 @@ self.addEventListener('fetch', e => {
         caches.open(CACHE).then(c => c.put(e.request, copy));
         return res;
       })
-      .catch(() => caches.match(e.request).then(r => r || caches.match('./index.html')))
+      .catch(() => caches.open(CACHE).then(c => c.match(e.request).then(r => r || c.match('./index.html'))))
   );
 });
 
