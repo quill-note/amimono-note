@@ -338,7 +338,10 @@ function stopTimer(p, addMs) {
   p.timer.total = (p.timer.total || 0) + (addMs ?? Date.now() - p.timer.running);
   p.timer.running = null;
 }
-function clearRun(p) { delete p.timer; delete p.workDays; delete p.startedAt; delete p.run; }
+// 進み具合だけ消す（タイマー・編んだ日・始めた日）。材料は残す
+function clearProgress(p) { delete p.timer; delete p.workDays; delete p.startedAt; }
+// 完成したとき：進み具合＋今回の材料も消して、次の1個へ
+function clearRun(p) { clearProgress(p); delete p.run; }
 
 // ---- 今回の材料（糸・針・作り目）：編みはじめに入れて、完成の記録へそのまま引き継ぐ ----
 const castLabel = c => c ? (/^\d+$/.test(c) ? `${c}目` : c) : '';
@@ -1403,7 +1406,7 @@ document.addEventListener('click', e => {
       if (p.steps.every(s => s.done)) toast('全工程チェック完了！');
       break;
     case 'reset':
-      askConfirm('チェックをすべて外しますか？', { ok: '外す', sub: p.startedAt || p.timer ? 'タイマーと編んだ日もリセットされます' : '' }).then(ok => { if (ok) { p.steps.forEach(s => { s.done = false; delete s.pause; }); clearRun(p); save(); update(); } });
+      askConfirm('チェックをすべて外しますか？', { ok: '外す', sub: p.startedAt || p.timer ? 'タイマーと編んだ日もリセットされます（今回の材料はそのまま残ります）' : '' }).then(ok => { if (ok) { p.steps.forEach(s => { s.done = false; delete s.pause; }); clearProgress(p); save(); update(); } });
       break;
     case 'complete': openComplete(p); break;
     case 'modal-close': closeModal(); break;
