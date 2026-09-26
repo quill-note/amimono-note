@@ -1105,7 +1105,7 @@ function editView() {
     <label class="label">参考動画のURL</label>
     <input type="text" data-field="video" value="${esc(d.video || '')}" placeholder="https://youtu.be/…" inputmode="url" autocapitalize="off">
     <label class="label">メモ</label>
-    <textarea rows="2" data-field="memo" placeholder="例：仕上がりのサイズ、作り目の数など">${esc(d.memo)}</textarea>
+    <textarea rows="2" data-field="memo" placeholder="例：仕上がりのサイズ、参考にした本、気をつけるところなど">${esc(d.memo)}</textarea>
     <label class="label">工程（${n}）${d.isNew ? '　※あとからチェック画面でも追加できます' : ''}</label>
     <ol class="edit-steps">${rows}</ol>
     <div class="add-row"><input type="text" id="newStep" placeholder="工程を追加" enterkeyhint="done"><button class="btn primary" data-action="addstep">${ic('plus')}追加</button></div>
