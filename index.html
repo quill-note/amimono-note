@@ -543,10 +543,14 @@ const daysLabel = r => { const d = daysBetween(r.start, r.date); return [d ? `${
 const byDateDesc = (a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0);
 // 「1段目：細編み」「3〜5段 長編み」のように書かれていたら段数と内容に分ける
 function parseStep(text) {
+  const z = String(text).match(/^\s*(?:0\s*段目?|作り目)\s*[：:、,\s]\s*(.+)$/);   // 「作り目：くさり30目」→ 0（作り目）
+  if (z) return { row: '0', text: z[1].trim() };
   const m = String(text).match(/^\s*(\d+(?:\s*[〜~\-ー－]\s*\d+)?)\s*段目?\s*[：:、,\s]\s*(.+)$/);
   return m ? { row: m[1].replace(/\s+/g, '').replace(/[~\-ー－]/, '〜'), text: m[2].trim() } : { row: '', text: String(text).trim() };
 }
-const rowLabel = r => r ? `${r}段目` : '';
+// 0段目は「作り目」と表示する（かぎ針編みは最初に必ず作り目があるので）
+const rowLabel = r => r === '0' ? '作り目' : r ? `${r}段目` : '';
+const danLabel = r => String(r).trim() === '0' ? '作り目' : '段目';
 // 次の段数の候補：最後の工程の段数（範囲なら終わりの数）＋1
 // 次の段数の候補：いちばん最後に段数が入っている工程の＋1。まだ1つもなければ1段目
 function nextRow(steps) {
@@ -554,7 +558,7 @@ function nextRow(steps) {
     const m = String(steps[i].row || '').match(/(\d+)$/);
     if (m) return String(+m[1] + 1);
   }
-  return '1';
+  return '0';   // まだ段数がなければ、最初は作り目から
 }
 const fixSteps = ps => ps.map(p => ({ ...p, steps: (p.steps || []).map(st => st.row === undefined ? { ...st, ...parseStep(st.text) } : st) }));
 const normalize = d => ({ patterns: Array.isArray(d?.patterns) ? fixSteps(d.patterns) : [], records: Array.isArray(d?.records) ? d.records : [], updatedAt: d?.updatedAt || 0 });
@@ -1086,7 +1090,7 @@ function openStepEdit(i) {
   if (!st) return;
   sheet(`<div class="sheet-title">${ic('pen')}工程を直す<button class="sheet-close" data-action="modal-close" aria-label="閉じる">${ic('x')}</button></div>
     <div class="add-row" style="align-items:center">
-      <input type="text" id="sRow" class="row-in" value="${esc(st.row || '')}" inputmode="numeric" placeholder="-" style="flex:none;width:4em;text-align:center" aria-label="段数"><span class="dan">段目</span>
+      <input type="text" id="sRow" class="row-in" value="${esc(st.row || '')}" inputmode="numeric" placeholder="-" style="flex:none;width:4em;text-align:center" aria-label="段数"><span class="dan" id="sDan">${danLabel(st.row || '')}</span>
       <input type="text" id="sText" value="${esc(st.text)}" placeholder="例：細編み">
     </div>
     <label class="label">ワンポイント</label>
@@ -1146,7 +1150,7 @@ function patternBody(p) {
     ${p.startedAt ? `<p class="started" data-action="startedit" role="button">${fmtDate(p.startedAt)} から ${daysBetween(p.startedAt, today())}日目・編んだ日 ${(p.workDays || []).length}日${ic('pen')}</p>` : ''}
     <ol class="list">
       ${steps}
-      <li class="quick-add"><input type="text" class="row-in" id="quickRow" value="${esc(nextRow(p.steps))}" inputmode="numeric" placeholder="-" aria-label="段数"><span class="dan">段目</span><input type="text" id="quickStep" placeholder="${total ? '次の工程' : '例：細編み'}" enterkeyhint="enter"><button class="btn-icon" data-action="quickadd" aria-label="追加">${ic('plus')}</button></li>
+      <li class="quick-add"><input type="text" class="row-in" id="quickRow" value="${esc(nextRow(p.steps))}" inputmode="numeric" placeholder="-" aria-label="段数"><span class="dan" id="quickDan">${danLabel(nextRow(p.steps))}</span><input type="text" id="quickStep" placeholder="${total ? '次の工程' : '例：細編み'}" enterkeyhint="enter"><button class="btn-icon" data-action="quickadd" aria-label="追加">${ic('plus')}</button></li>
     </ol>
     ${total ? '<p class="list-hint">工程を長押しすると、直したりワンポイントを付けたりできます</p>' : ''}
     <div class="actions">
@@ -1166,7 +1170,7 @@ function update() {
   const typed = q?.value || '', typedRow = r?.value, focus = document.activeElement?.id;
   box.innerHTML = patternBody(p); hydratePhotos(box);
   document.getElementById('quickStep').value = typed;
-  if (typedRow !== undefined) document.getElementById('quickRow').value = typedRow;
+  if (typedRow !== undefined) { document.getElementById('quickRow').value = typedRow; document.getElementById('quickDan').textContent = danLabel(typedRow); }
   if (focus === 'quickStep' || focus === 'quickRow') document.getElementById(focus).focus();
 }
 
@@ -1174,7 +1178,8 @@ function quickAdd() {
   const p = findP(view.id), q = document.getElementById('quickStep'), r = document.getElementById('quickRow');
   if (!p || !q.value.trim()) return;
   const typedRow = r.value.trim().replace(/段目?$/, '');
-  const st = typedRow ? { row: typedRow, text: q.value.trim() } : parseStep(q.value);
+  const ps = parseStep(q.value);   // 「作り目：〜」「3段目：〜」と書いてあれば、そちらを優先
+  const st = ps.row ? ps : { row: typedRow, text: q.value.trim() };
   p.steps.push({ id: uid(), ...st, done: false });
   p.updatedAt = Date.now();
   q.value = ''; r.value = nextRow(p.steps);   // 次の段数を自動で入れておく
@@ -1520,6 +1525,10 @@ document.addEventListener('click', e => {
 });
 
 document.addEventListener('input', e => {
+  if (e.target.id === 'quickRow' || e.target.id === 'sRow') {
+    const d = document.getElementById(e.target.id === 'quickRow' ? 'quickDan' : 'sDan');
+    if (d) d.textContent = danLabel(e.target.value);
+  }
   if (e.target.type === 'color' && e.target.id.endsWith('Pick')) applyColor(e.target.id.slice(0, -4), e.target.value);
   if (e.target.classList.contains('yarn-in') && !e.isComposing && /[ 　]/.test(e.target.value)) {
     const parts = e.target.value.split(/[ 　]+/), rest = parts.pop();
