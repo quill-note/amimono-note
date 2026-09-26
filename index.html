@@ -278,6 +278,7 @@ textarea{resize:none}
 <script>
 /* ===== アイコン（SVG線画。外部読み込みなしでオフラインでも表示） ===== */
 const ICONS = {
+  copy:     '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
   bulb:     '<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2V16h5v-.2c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3z"/>',
   ruler:    '<path d="M21.3 15.3 8.7 2.7a1 1 0 0 0-1.4 0L2.7 7.3a1 1 0 0 0 0 1.4l12.6 12.6a1 1 0 0 0 1.4 0l4.6-4.6a1 1 0 0 0 0-1.4z"/><path d="m7.5 10.5 2-2"/><path d="m10.5 13.5 2-2"/><path d="m13.5 16.5 2-2"/>',
   camera:   '<path d="M14.5 4h-5L7.5 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.5z"/><circle cx="12" cy="13" r="3.5"/>',
@@ -589,7 +590,22 @@ async function idbGet(k) {
   } catch (e) { return null; }
 }
 // 変更のたびに呼ぶ：端末に保存 → 少し待ってクラウドへ
-function save() { state.updatedAt = Date.now(); store(); schedulePush(); syncTimerNote(); }
+function save() { state.updatedAt = Date.now(); store(); schedulePush(); syncTimerNote(); syncWake(); }
+
+/* ===== 編んでいる間は画面を消さない（Wake Lock） =====
+   タイマーが動いていて、アプリが表に出ている間だけ。設定でオフにできる */
+const WAKE_KEY = 'amimono-note-wake';
+const wakeOn = () => { try { return localStorage.getItem(WAKE_KEY) !== '0'; } catch (e) { return true; } };
+let wakeLock = null;
+async function syncWake() {
+  const want = wakeOn() && document.visibilityState === 'visible' && state.patterns.some(p => p.timer?.running);
+  try {
+    if (want && !wakeLock && navigator.wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } else if (!want && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch (e) { wakeLock = null; }
+}
 
 /* ===== タイマーの通知（Android向け。数字は動かないので「〇時〇分から」を出す） ===== */
 const NOTE_TAG = 'amimono-timer';
@@ -764,7 +780,7 @@ function disconnect() {
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') flush(true);   // アプリを閉じる前に送る
-  else { pull(); checkLongTimer(); }                         // 戻ってきたら他の端末の変更を確認
+  else { pull(); checkLongTimer(); syncWake(); }             // 戻ってきたら他の端末の変更を確認・画面を消さない設定を戻す
 });
 window.addEventListener('online', () => { if (dirty) flush(); else pull(); });
 
@@ -1207,6 +1223,8 @@ function editView() {
       <textarea id="bulk" rows="5" placeholder="1行に1工程ずつ。&#10;例）1段目：細編み&#10;　　2段目：長編み"></textarea>
       <button class="btn outline" data-action="bulkadd">${ic('plus')}まとめて追加</button>
     </details>
+    ${d.isNew ? '' : `<button class="btn outline block" data-action="dupe" style="margin-top:24px">${ic('copy')}この作品を複製する</button>
+    <p class="note">工程・メモ・動画をコピーした新しい作品を作ります。元の作品と記録はそのまま残ります。</p>`}
   </main>`;
 }
 
@@ -1221,6 +1239,14 @@ function recordsView() {
 }
 
 /* 設定（クラウド保存） */
+function wakePanel() {
+  const on = wakeOn(), ok = !!navigator.wakeLock;
+  return `<div class="panel">
+    <div class="section-title" style="margin-top:0">${ic('clock')}編んでいる間の画面</div>
+    <label class="checkline" style="margin-top:0"><input type="checkbox" id="wakeToggle" ${on ? 'checked' : ''} ${ok ? '' : 'disabled'}> タイマーが動いている間は、画面を消さない</label>
+    <p style="margin-top:8px">${ok ? '「休憩」を押すと、ふだんどおり画面が消えるようになります。電池の減りが気になるときはオフにしてください。' : 'このブラウザでは使えません。'}</p>
+  </div>`;
+}
 function settingsView() {
   const count = `<p class="note">作品 ${state.patterns.length} 件 ／ 記録 ${state.records.length} 件</p>`;
   if (!sync.token) {
@@ -1237,7 +1263,7 @@ function settingsView() {
       <input type="password" id="token" autocomplete="off" placeholder="github_pat_… / ghp_…">
       <button class="btn primary block" data-action="connect">${ic('cloud')}クラウド保存をはじめる</button>
       ${syncError ? `<div class="status error">${ic('cloudOff')}${esc(syncError)}</div>` : ''}
-    </div>${count}</main>`;
+    </div>${wakePanel()}${count}</main>`;
   }
   const st = {
     syncing: `<div class="status">${ic('cloud')}保存しています…</div>`,
@@ -1251,7 +1277,7 @@ function settingsView() {
     <p>変更は自動で保存されます。ほかの端末でも同じトークンを入れると、同じデータを使えます。</p>
     <button class="btn outline block" data-action="syncnow">${ic('reset')}今すぐ同期する</button>
     <button class="btn danger block" data-action="disconnect">${ic('cloudOff')}クラウド保存をやめる</button>
-  </div>${count}</main>`;
+  </div>${wakePanel()}${count}</main>`;
 }
 
 /* ===== 完成モーダル ===== */
@@ -1451,6 +1477,23 @@ document.addEventListener('click', e => {
       const back = draft.isNew ? ['home', null] : ['pattern', draft.id];
       draft = null; go(...back); break;
     }
+    case 'dupe': {
+      const src = findP(draft.id);
+      if (!src) break;
+      askConfirm(`「${src.name}」を複製しますか？`, { ok: '複製する', sub: '編集中でまだ保存していない変更は、複製に入りません' }).then(ok => {
+        if (!ok) return;
+        const copy = {
+          id: uid(), name: src.name + '（コピー）', video: src.video || '', memo: src.memo || '',
+          steps: src.steps.map(st => { const c = { ...st, id: uid(), done: false }; delete c.pause; return c; }),
+          createdAt: Date.now(), updatedAt: Date.now(),
+        };
+        const i = state.patterns.findIndex(x => x.id === src.id);
+        state.patterns.splice(i + 1, 0, copy); save();
+        draft = { ...structuredClone(copy), isNew: false }; go('edit', copy.id);   // すぐ名前を直せるように編集画面へ
+        toast('複製しました。名前を変えて保存してください');
+      });
+      break;
+    }
     case 'delpattern':
       { const w = findP(id); if (!w) break;
         askConfirm(`「${w.name}」を削除しますか？`, { ok: '削除', danger: true, sub: '完成記録は残ります' }).then(ok => {
@@ -1502,6 +1545,7 @@ document.addEventListener('keydown', e => {
 });
 
 document.addEventListener('change', async e => {
+  if (e.target.id === 'wakeToggle') { try { localStorage.setItem(WAKE_KEY, e.target.checked ? '1' : '0'); } catch (err) {} syncWake(); toast(e.target.checked ? '編んでいる間は画面を消さないようにしました' : '画面はふだんどおり消えます'); }
   if (e.target.classList?.contains('hook-in')) e.target.value = normHook(e.target.value);
   if (e.target.id === 'photoFile' && e.target.files[0]) {
     try { pendingPhoto = await shrink(e.target.files[0]); refreshPhotoBox(); }
@@ -1532,6 +1576,7 @@ document.addEventListener('compositionend', e => {
   if (q.toString()) history.replaceState(null, '', location.pathname);
   pull();
   syncTimerNote();
+  syncWake();
 })();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
