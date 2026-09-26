@@ -273,6 +273,7 @@ textarea{resize:none}
 <script>
 /* ===== アイコン（SVG線画。外部読み込みなしでオフラインでも表示） ===== */
 const ICONS = {
+  ruler:    '<path d="M21.3 15.3 8.7 2.7a1 1 0 0 0-1.4 0L2.7 7.3a1 1 0 0 0 0 1.4l12.6 12.6a1 1 0 0 0 1.4 0l4.6-4.6a1 1 0 0 0 0-1.4z"/><path d="m7.5 10.5 2-2"/><path d="m10.5 13.5 2-2"/><path d="m13.5 16.5 2-2"/>',
   camera:   '<path d="M14.5 4h-5L7.5 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.5z"/><circle cx="12" cy="13" r="3.5"/>',
   clock:    '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M10 2h4"/>',
   play:     '<path d="M7 4.5v15l12-7.5z"/>',
@@ -339,7 +340,7 @@ const castLabel = c => c ? (/^\d+$/.test(c) ? `${c}目` : c) : '';
 const yarnsOf = m => Array.isArray(m?.yarns) ? m.yarns
   : (m?.yarn || m?.color) ? [{ name: [m.yarn, m.color].filter(Boolean).join(''), hex: m.colorHex || '' }] : [];
 const hexesOf = m => yarnsOf(m).map(y => y.hex).filter(Boolean);
-const matText = m => [yarnsOf(m).map(y => y.name).join('・'), m?.hook, m?.cast ? '作り目 ' + castLabel(m.cast) : ''].filter(Boolean).join('／');
+const matText = m => [yarnsOf(m).map(y => y.name).join('・'), m?.size, m?.hook, m?.cast ? '作り目' + castLabel(m.cast) : ''].filter(Boolean).join('　');
 const okHex = h => /^#[0-9a-f]{6}$/i.test(h || '') ? h : '';
 // 毛糸の色の○。色が複数なら○を色で分ける（色がなければいつもの○）
 function colorDot(hexes, size = 18) {
@@ -391,6 +392,7 @@ function matFields(px, m = {}) {
     <div class="chips" id="${px}Chips" data-sel="${sel}">${chipsHtml(px, ys, sel)}</div>
     <input type="text" id="${px}YarnIn" class="yarn-in" data-px="${px}" placeholder="例：コットン生成り" enterkeyhint="done">
     ${c ? `<p class="sel-hint" id="${px}Hint">${esc(selHint(px, ys, sel, false))}</p><div class="swatches" data-px="${px}">${swatchesHtml(px, okHex(ys[sel]?.hex))}</div>` : ''}
+    <label class="label">サイズ</label><input type="text" id="${px}Size" value="${esc(m.size || '')}" placeholder="例：文庫本サイズ">
     <div class="dates">
       <div><label class="label">針</label><input type="text" id="${px}Hook" class="hook-in" value="${esc(m.hook || '')}" placeholder="例：5（→5/0号）" inputmode="decimal"></div>
       <div><label class="label">作り目</label><input type="text" id="${px}Cast" value="${esc(m.cast || '')}" placeholder="例：30" inputmode="numeric"></div>
@@ -444,7 +446,7 @@ const readMat = (v, px) => {
   const pend = (v[px + 'YarnIn'] || '').trim(); if (pend) ys.push({ name: pend, hex: '' });
   ys = ys.filter(y => y.name || y.hex).map(y => ({ name: String(y.name || '').trim(), hex: okHex(y.hex) }));
   return { yarns: ys, yarn: undefined, color: undefined, colorHex: undefined,
-    hook: normHook(v[px + 'Hook']), cast: (v[px + 'Cast'] || '').trim().replace(/目$/, '') };
+    size: (v[px + 'Size'] || '').trim(), hook: normHook(v[px + 'Hook']), cast: (v[px + 'Cast'] || '').trim().replace(/目$/, '') };
 };
 const inputVals = () => { const v = {}; modal.querySelectorAll('input,textarea').forEach(i => { if (i.id) v[i.id] = i.value; }); return v; };
 
@@ -492,7 +494,7 @@ function expandMat() {
   const box = document.getElementById('matBox');
   if (!box || document.getElementById('mChips')) return;
   const v = inputVals();
-  box.innerHTML = matFields('m', { yarns: JSON.parse(v.mYarns || '[]'), hook: v.mHook, cast: v.mCast });
+  box.innerHTML = matFields('m', { yarns: JSON.parse(v.mYarns || '[]'), size: v.mSize, hook: v.mHook, cast: v.mCast });
 }
 function prevCombos(p) {   // 過去の記録から、重ならない組み合わせを新しい順に3つ
   const seen = new Set(), out = [];
@@ -506,7 +508,7 @@ function prevCombos(p) {   // 過去の記録から、重ならない組み合�
 }
 function matView(p) {
   const t = matText(p.run);
-  if (!t) return `<div class="mat mat-empty" data-action="mat" role="button">${ic('yarn')}今回の糸・針・作り目を入れる</div>`;
+  if (!t) return `<div class="mat mat-empty" data-action="mat" role="button">${ic('yarn')}今回の糸・サイズ・針・作り目を入れる</div>`;
   return `<div class="mat" data-action="mat" role="button">${ic('yarn')}<span class="mbody"><span class="mlabel">今回の材料</span><span class="mval">${esc(t)}</span></span><span class="mpen">${ic('pen')}</span></div>`;
 }
 function editMat(p) {
@@ -1077,6 +1079,7 @@ function recordItem(r, showName = false) {
     <div class="rbody">
       <div class="record-head"><span class="date">${fmtDate(r.date)}</span>${showName ? `<span class="rname">${esc(name)}</span>` : ''}${days ? `<span class="badge">${days}</span>` : ''}</div>
       ${yarnsOf(r).length ? `<div class="yarn">${ic('yarn')}${esc(yarnsOf(r).map(y => y.name).join('・'))}</div>` : ''}
+      ${r.size ? `<div class="yarn">${ic('ruler')}${esc(r.size)}</div>` : ''}
       ${r.hook ? `<div class="yarn">${ic('hook')}${esc(r.hook)}</div>` : ''}
       ${r.cast ? `<div class="yarn">${ic('list')}作り目 ${esc(castLabel(r.cast))}</div>` : ''}
       ${r.memo ? `<div class="rmemo">${esc(r.memo)}</div>` : ''}
@@ -1105,7 +1108,7 @@ function editView() {
     <label class="label">参考動画のURL</label>
     <input type="text" data-field="video" value="${esc(d.video || '')}" placeholder="https://youtu.be/…" inputmode="url" autocapitalize="off">
     <label class="label">メモ</label>
-    <textarea rows="2" data-field="memo" placeholder="例：仕上がりのサイズ、参考にした本、気をつけるところなど">${esc(d.memo)}</textarea>
+    <textarea rows="2" data-field="memo" placeholder="例：参考にした本、気をつけるところなど">${esc(d.memo)}</textarea>
     <label class="label">工程（${n}）${d.isNew ? '　※あとからチェック画面でも追加できます' : ''}</label>
     <ol class="edit-steps">${rows}</ol>
     <div class="add-row"><input type="text" id="newStep" placeholder="工程を追加" enterkeyhint="done"><button class="btn primary" data-action="addstep">${ic('plus')}追加</button></div>
@@ -1168,7 +1171,7 @@ function recordForm(r, fromRun = false) {
   // 完成のとき：チェック画面で入れた材料をそのまま使う（入れていなければここで入力）
   const mat = fromRun && matText(r)
     ? `<div id="matBox"><div class="mat-sum"><button class="sum-edit" data-action="matedit">直す</button><b>今回の材料（チェック画面で入れた内容）</b>${esc(matText(r))}</div>
-       <input type="hidden" id="mYarns" value="${esc(JSON.stringify(yarnsOf(r)))}"><input type="hidden" id="mHook" value="${esc(r.hook || '')}"><input type="hidden" id="mCast" value="${esc(r.cast || '')}"></div>`
+       <input type="hidden" id="mYarns" value="${esc(JSON.stringify(yarnsOf(r)))}"><input type="hidden" id="mSize" value="${esc(r.size || '')}"><input type="hidden" id="mHook" value="${esc(r.hook || '')}"><input type="hidden" id="mCast" value="${esc(r.cast || '')}"></div>`
     : `<div id="matBox">${matFields('m', r)}</div>`;
   return `${photo}
     <div class="dates">
