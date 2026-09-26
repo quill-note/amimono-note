@@ -392,7 +392,7 @@ function matFields(px, m = {}) {
     <div class="chips" id="${px}Chips" data-sel="${sel}">${chipsHtml(px, ys, sel)}</div>
     <input type="text" id="${px}YarnIn" class="yarn-in" data-px="${px}" placeholder="例：コットン生成り" enterkeyhint="done">
     ${c ? `<p class="sel-hint" id="${px}Hint">${esc(selHint(px, ys, sel, false))}</p><div class="swatches" data-px="${px}">${swatchesHtml(px, okHex(ys[sel]?.hex))}</div>` : ''}
-    <label class="label">サイズ</label><input type="text" id="${px}Size" value="${esc(m.size || '')}" placeholder="例：文庫本サイズ">
+    <label class="label">サイズ</label><input type="text" id="${px}Size" value="${esc(m.size || '')}" placeholder="例：文庫本">
     <div class="dates">
       <div><label class="label">針</label><input type="text" id="${px}Hook" class="hook-in" value="${esc(m.hook || '')}" placeholder="例：5（→5/0号）" inputmode="decimal"></div>
       <div><label class="label">作り目</label><input type="text" id="${px}Cast" value="${esc(m.cast || '')}" placeholder="例：30" inputmode="numeric"></div>
@@ -982,23 +982,33 @@ function timerView(p) {
   return `<div class="timer ${on ? 'on' : ''}">
     ${ic('clock').replace('class="ic"', 'class="ic clock"')}
     <div class="tbox"><span class="t" id="timerTime">${clock(ms)}</span><span class="tsub">${on ? '編んでいます' : ms ? '合計の時間' : 'タイマー'}</span></div>
-    ${ms ? `<button class="btn-icon tedit" data-action="timeredit" aria-label="時間を直す">${ic('pen')}</button>` : ''}
+    <button class="btn-icon tedit" data-action="timeredit" aria-label="時間を手で入れる">${ic('pen')}</button>
     <button class="btn ${on ? 'outline' : 'primary'} tbtn" data-action="timer">${on ? ic('pause') + '休憩' : ic('play') + (ms ? '再開' : '編みはじめる')}</button>
   </div>`;
 }
 const durInputs = (min = 0) => `<div class="dur"><input type="number" id="dH" min="0" inputmode="numeric" value="${min ? Math.floor(min / 60) : ''}" placeholder="0">時間<input type="number" id="dM" min="0" max="59" inputmode="numeric" value="${min ? min % 60 : ''}" placeholder="0">分</div>`;
 const readDur = v => (parseInt(v.dH) || 0) * 60 + (parseInt(v.dM) || 0);
 
+// 時間の手入力：「今日だいたい1時間編んだ」を足す／合計を直す
 function editTimer(p) {
-  const on = !!p.timer?.running;
-  sheet(`<div class="sheet-title">${ic('clock')}合計の時間を直す</div>
-    <label class="label">これまでに編んだ時間</label>${durInputs(Math.round(elapsed(p) / 60000))}
-    <div class="actions"><button class="btn danger" data-ans="zero">0にする</button><button class="btn primary" data-ans="save">保存</button></div>`);
+  const on = !!p.timer?.running, min = Math.round(elapsed(p) / 60000);
+  sheet(`<div class="sheet-title">${ic('clock')}編んだ時間を入れる<button class="sheet-close" data-action="modal-close" aria-label="閉じる">${ic('x')}</button></div>
+    <p class="ask-sub">いまの合計：${min ? fmtMin(min) : '0分'}</p>
+    <label class="label">時間</label>${durInputs(0)}
+    <div class="actions col">
+      <button class="btn primary" data-ans="add">${ic('plus')}合計に足す</button>
+      <button class="btn outline" data-ans="set">合計をこの時間にする</button>
+      ${min ? '<button class="btn danger" data-ans="zero">0にする</button>' : ''}
+    </div>`);
   modalResolve = v => {
     if (!v) return;
-    const ms = v === 'zero' ? 0 : readDur(formVals) * 60000;
+    const input = readDur(formVals) * 60000, cur = elapsed(p);
+    if (v !== 'zero' && !input) { toast('時間を入れてください'); return; }
+    const ms = v === 'add' ? cur + input : v === 'set' ? input : 0;
     p.timer = { total: ms, running: on ? Date.now() : null };
+    if (v === 'add') markDay(p);   // 足した日は「編んだ日」に数える
     p.updatedAt = Date.now(); save(); update();
+    if (v === 'add') toast(`${fmtMin(Math.round(input / 60000))}足しました`);
   };
 }
 // 何時間も動きっぱなしなら、戻ってきたときに聞く
