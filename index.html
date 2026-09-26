@@ -190,7 +190,8 @@ main{max-width:640px;margin:0 auto;padding:14px 16px calc(env(safe-area-inset-bo
 .prev button{text-align:left;border:1.5px solid var(--border);background:var(--surface2);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text2)}
 .prev button:active{border-color:var(--primary);color:var(--primary)}
 .prev .pdate{font-size:11px;color:var(--text3);margin-right:6px}
-.started{font-size:12px;color:var(--text3);margin:-6px 0 10px;text-align:right}
+.started{display:flex;justify-content:flex-end;align-items:center;gap:4px;font-size:12px;color:var(--text3);margin:-6px 0 10px;cursor:pointer}
+.started svg.ic{width:13px;height:13px}
 .sheet-sub{font-size:13px;color:var(--text2);margin-bottom:4px}
 .record-head{display:flex;align-items:center;gap:8px}
 .record-head .date{font-weight:700;color:var(--text)}
@@ -1016,6 +1017,29 @@ function editTimer(p) {
     if (v === 'add') toast(`${fmtMin(Math.round(input / 60000))}足しました`);
   };
 }
+// 始めた日・編んだ日を直す（試しにチェックしただけ、などのとき）
+function editStart(p) {
+  sheet(`<div class="sheet-title">${ic('clock')}始めた日<button class="sheet-close" data-action="modal-close" aria-label="閉じる">${ic('x')}</button></div>
+    <div class="dates">
+      <div><label class="label">始めた日</label><input type="date" id="stDate" value="${esc(p.startedAt || today())}"></div>
+      <div><label class="label">編んだ日</label><div class="dur"><input type="number" id="stDays" min="0" inputmode="numeric" value="${(p.workDays || []).length}">日</div></div>
+    </div>
+    <div class="actions col">
+      <button class="btn primary" data-ans="save">保存</button>
+      <button class="btn outline" data-ans="reset">まだ編みはじめていない（リセット）</button>
+    </div>`);
+  modalResolve = v => {
+    if (v === 'reset') { delete p.startedAt; delete p.workDays; }
+    else if (v === 'save') {
+      p.startedAt = formVals.stDate || today();
+      const n = Math.max(0, parseInt(formVals.stDays) || 0), days = (p.workDays || []).filter(d => d >= p.startedAt).sort();
+      while (days.length > n) days.shift();                       // 減らしたときは古い日から外す
+      for (let k = 0; days.length < n; k++) days.unshift(`_${k}`); // 増やしたときは数だけ合わせる
+      p.workDays = days;
+    } else return;
+    p.updatedAt = Date.now(); save(); update();
+  };
+}
 // 何時間も動きっぱなしなら、戻ってきたときに聞く
 function checkLongTimer() {
   const p = findP(view.id);
@@ -1096,7 +1120,7 @@ function patternBody(p) {
     ${matView(p)}
     ${timerView(p)}
     <div class="progress"><div class="bar"><span style="width:${pct}%"></span></div><div>${done} / ${total}</div></div>
-    ${p.startedAt ? `<p class="started">${fmtDate(p.startedAt)} から ${daysBetween(p.startedAt, today())}日目・編んだ日 ${(p.workDays || []).length}日</p>` : ''}
+    ${p.startedAt ? `<p class="started" data-action="startedit" role="button">${fmtDate(p.startedAt)} から ${daysBetween(p.startedAt, today())}日目・編んだ日 ${(p.workDays || []).length}日${ic('pen')}</p>` : ''}
     <ol class="list">
       ${steps}
       <li class="quick-add"><input type="text" class="row-in" id="quickRow" value="${esc(nextRow(p.steps))}" inputmode="numeric" placeholder="-" aria-label="段数"><span class="dan">段目</span><input type="text" id="quickStep" placeholder="${total ? '次の工程' : '例：細編み'}" enterkeyhint="enter"><button class="btn-icon" data-action="quickadd" aria-label="追加">${ic('plus')}</button></li>
@@ -1374,6 +1398,7 @@ document.addEventListener('click', e => {
       p.steps[idx].done = !p.steps[idx].done;
       if (p.steps[idx].done) delete p.steps[idx].pause;
       if (p.steps[idx].done) markDay(p);   // チェックした日を「編んだ日」に（最初の日が「始めた日」）
+      else if (!p.steps.some(s => s.done) && !elapsed(p)) { delete p.startedAt; delete p.workDays; }   // 全部外して時間も0なら「まだ始めていない」に戻す
       p.updatedAt = Date.now(); save(); update();
       if (p.steps.every(s => s.done)) toast('全工程チェック完了！');
       break;
@@ -1400,6 +1425,7 @@ document.addEventListener('click', e => {
       }
       p.updatedAt = Date.now(); save(); update(); break;
     case 'timeredit': editTimer(p); break;
+    case 'startedit': editStart(p); break;
     case 'mat': editMat(p); break;
     case 'fillprev': {
       const r = prevCombos(p)[idx];
