@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f9e7c" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1c2421" media="(prefers-color-scheme: dark)">
+<title>あみものノート</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="あみものノート">
+<style>
+/* ===== writing-studio と同じ作り・翡翠色版 ===== */
+:root{
+  --primary:#2f9e7c;        /* 翡翠色 */
+  --primary-dark:#23866a;
+  --primary-light:#8fd0ba;
+  --primary-pale:#ebf7f2;
+  --bg:#f6fbf9;             /* ほぼ白、ほんのり翡翠 */
+  --surface:#ffffff;
+  --surface2:#f1f8f5;
+  --border:#cfe6dd;
+  --text:#1f3a33; --text2:#44695f; --text3:#7fa197;
+  --shadow:rgba(47,158,124,.13);
+  --done:#9cc7b8; --danger:#e0584f;
+}
+@media (prefers-color-scheme:dark){:root{
+  --primary:#4fbf9a; --primary-dark:#3fa885; --primary-light:#2f7a63; --primary-pale:#1d3a31;
+  --bg:#141a18; --surface:#1c2421; --surface2:#222c29; --border:#2e3d38;
+  --text:#e3eeea; --text2:#b0c6bf; --text3:#7d948d; --shadow:rgba(0,0,0,.35);
+  --done:#4f7d6e; --danger:#ef7b73;
+}}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:"Meiryo","メイリオ","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6}
+button{font:inherit;color:inherit;cursor:pointer}
+svg.ic{width:20px;height:20px;flex:none;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* ヘッダー */
+.header{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;background:var(--surface);box-shadow:0 2px 8px var(--shadow)}
+.header h1{flex:1;min-width:0;font-size:20px;font-weight:700;color:var(--primary);letter-spacing:.05em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.header h1 .logo svg.ic{width:24px;height:24px;margin:-3px 6px 0 0;stroke-width:1.8}
+.header h1.sub{font-size:17px;color:var(--text)}
+.btn-icon{flex:none;width:36px;height:36px;border-radius:50%;border:none;background:var(--primary-pale);color:var(--primary);display:flex;align-items:center;justify-content:center;transition:background .2s}
+.btn-icon:active{background:var(--border)}
+.hbtn{flex:none;padding:7px 16px;border-radius:20px;font-size:14px;font-weight:600;border:1.5px solid var(--border);background:var(--surface2);color:var(--text2)}
+.hbtn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.hbtn.primary:active{background:var(--primary-dark)}
+.row-del{flex:none;border:none;background:none;color:var(--text3);width:36px;height:36px;display:grid;place-items:center;border-radius:50%}
+.row-del:active{background:var(--surface2);color:var(--danger)}
+main{max-width:640px;margin:0 auto;padding:14px 16px calc(env(safe-area-inset-bottom) + 90px)}
+
+/* ボタン */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border-radius:10px;font-size:14px;font-weight:600;border:1.5px solid var(--border);background:var(--surface2);color:var(--text2);transition:background .2s}
+.btn svg.ic{width:18px;height:18px}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn.primary:active{background:var(--primary-dark)}
+.btn.outline{background:var(--surface);border-color:var(--primary-light);color:var(--primary)}
+.btn.danger{background:var(--surface);border-color:var(--danger);color:var(--danger)}
+.btn:disabled{opacity:.4}
+.btn-add{display:flex;width:100%;align-items:center;justify-content:center;gap:6px;padding:12px;border:2px dashed var(--primary-light);border-radius:14px;background:var(--primary-pale);color:var(--primary);font-size:14px;font-weight:700;margin-bottom:12px}
+.block{display:flex;width:100%;margin:10px 0}
+.actions{display:flex;gap:10px;margin:16px 0}
+.actions .btn{flex:1}
+
+/* リスト（白い箱に罫線区切り） */
+.list{list-style:none;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 2px 6px var(--shadow);overflow:hidden}
+.list > li + li{border-top:1px solid var(--border)}
+
+/* 作品リスト */
+.row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:none;border:none;padding:13px 8px 13px 14px;cursor:pointer}
+.row:active{background:var(--primary-pale)}
+.row-photo{width:100%;height:100%;border-radius:50%;object-fit:cover}
+.row-icon{flex:none;width:36px;height:36px;border-radius:50%;background:var(--primary-pale);color:var(--primary);display:grid;place-items:center;overflow:hidden}
+.row-main{flex:1;min-width:0}
+.row-title{font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row-meta{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text3);margin-top:3px}
+.row-meta .bar{flex:1;max-width:120px;margin:0}
+.badge svg.ic{width:11px;height:11px;fill:currentColor;margin-right:2px;vertical-align:-1px}
+.badge{font-size:11px;padding:2px 8px;border-radius:8px;background:var(--primary-pale);color:var(--primary);font-weight:600;white-space:nowrap}
+.row .chev{color:var(--text3)}
+.bar{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;flex:1}
+.bar span{display:block;height:100%;background:var(--primary);border-radius:3px;transition:width .3s}
+
+/* 工程チェック */
+.memo{background:var(--surface);border:1.5px solid var(--border);border-left:4px solid var(--primary);border-radius:10px;padding:10px 12px;white-space:pre-wrap;font-size:13px;color:var(--text2);margin-bottom:14px}
+.progress{display:flex;align-items:center;gap:12px;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:12px}
+.step{display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer;user-select:none;-webkit-user-select:none}
+.step .row-no{flex:none;min-width:4.2em;font-size:13px;font-weight:700;color:var(--primary);white-space:nowrap}
+.step .text{flex:1;font-size:15px;white-space:pre-wrap;word-break:break-word}
+.step .check{flex:none;width:26px;height:26px;border:2px solid var(--primary-light);border-radius:7px;display:grid;place-items:center;color:#fff;background:var(--surface);transition:background .15s}
+.step .check svg.ic{width:17px;height:17px;stroke-width:3}
+.step.done{background:var(--primary-pale)}
+.step.done .check{background:var(--primary);border-color:var(--primary)}
+.step.next .text{font-weight:700}
+.step.next .check{border-color:var(--primary)}
+.step .body{flex:1;min-width:0}
+.step .body .text{display:block}
+.step .pause-note{display:flex;align-items:center;gap:4px;margin-top:3px;font-size:12px;font-weight:700;color:var(--primary)}
+.step .pause-note svg.ic{width:14px;height:14px;fill:currentColor}
+.step.paused{background:var(--surface2);box-shadow:inset 4px 0 0 var(--primary)}
+.step.paused .check{border-color:var(--primary);border-style:dashed}
+.pause-btn{flex:none;border:none;background:none;color:var(--text3);width:34px;height:34px;display:grid;place-items:center;border-radius:50%}
+.pause-btn.on{color:var(--primary)}
+.pause-btn.on svg.ic{fill:currentColor}
+.pause-btn svg.ic{width:19px;height:19px}
+.quick-add{display:flex;align-items:center;gap:8px;padding:10px 10px 10px 14px;background:var(--surface2)}
+.quick-add .row-in{flex:none;width:3.6em!important;text-align:center;padding:9px 4px!important}
+.quick-add .dan,.edit-step .dan{flex:none;font-size:12px;color:var(--text2);font-weight:600}
+.quick-add input{flex:1;min-width:0;background:var(--surface)!important;padding:9px 12px!important}
+.quick-add .btn-icon{background:var(--primary);color:#fff}
+.list > li.quick-add{border-top:1.5px dashed var(--border)}
+
+/* 動画 */
+.video{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 2px 6px var(--shadow);overflow:hidden;margin-bottom:14px}
+.video-frame{position:relative;padding-top:56.25%;background:#000}
+.video-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.video-bar{display:flex;align-items:center;gap:6px;padding:8px 12px;font-size:13px}
+.video-bar .grow{flex:1}
+.video-bar a,.video-bar button{display:inline-flex;align-items:center;gap:4px;color:var(--primary);font-weight:600;text-decoration:none;border:none;background:none;font-size:13px}
+.video-bar svg.ic{width:17px;height:17px}
+.video-link{display:flex;align-items:center;gap:8px;padding:12px 14px;color:var(--primary);font-weight:600;font-size:14px;text-decoration:none;word-break:break-all}
+.section-title{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:var(--primary);margin:26px 0 8px}
+.section-title svg.ic{width:18px;height:18px}
+
+/* 記録 */
+.record{padding:11px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px}
+.record:active{background:var(--primary-pale)}
+.record .rbody{flex:1;min-width:0}
+.record .chev{color:var(--text3)}
+.record .rmemo{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dates{display:flex;gap:10px}
+.dates > div{flex:1;min-width:0}
+.days{margin-top:8px;font-size:13px;font-weight:700;color:var(--primary)}
+.timer{display:flex;align-items:center;gap:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:10px 10px 10px 14px;margin-bottom:12px;box-shadow:0 2px 6px var(--shadow)}
+.timer.on{border-color:var(--primary);background:var(--primary-pale)}
+.timer > svg.ic{color:var(--primary)}
+.timer .tbox{flex:1;min-width:0;line-height:1.25}
+.timer .t{display:block;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
+.timer .tsub{font-size:11px;color:var(--text3)}
+.timer.on .tsub{color:var(--primary);font-weight:700}
+.timer .tedit{width:32px;height:32px;background:none;color:var(--text3)}
+.timer .tbtn{padding:9px 14px;border-radius:20px}
+.timer.on svg.clock{animation:blink 2s ease-in-out infinite}
+.dur{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--text2);white-space:nowrap}
+.dur input{flex:1;min-width:0;max-width:4.6em;width:auto!important;text-align:center;padding:10px 4px!important}
+.mat{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:10px 12px 10px 14px;margin-bottom:12px;font-size:13px;color:var(--text2);cursor:pointer}
+.mat.mat-empty{border-style:dashed;border-color:var(--primary-light);background:var(--primary-pale);color:var(--primary);font-weight:700;justify-content:center}
+.mat > svg.ic{color:var(--primary)}
+.mat .mbody{flex:1;min-width:0}
+.mat .mlabel{display:block;font-size:11px;color:var(--text3);font-weight:600}
+.mat .mval{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);font-weight:600}
+.mat .mpen{color:var(--text3)}
+.swatches{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.sw{width:30px;height:30px;border-radius:50%;border:1.5px solid rgba(0,0,0,.15);padding:0;position:relative}
+.sw.on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--primary)}
+.sw.none{background:var(--surface);color:var(--text3);font-size:10px}
+.sw.pick{overflow:hidden;background:conic-gradient(#e57373,#f2d25c,#6cbf84,#8fd0e8,#a58ad6,#e57373)}
+.sw.pick input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.cdot{display:inline-grid;place-items:center;flex:none}
+.mat-sum{background:var(--surface2);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text2);margin-top:12px}
+.mat-sum b{display:block;font-size:11px;color:var(--text3);margin-bottom:2px}
+.photo-box{margin:6px 0 4px;position:relative}
+.pick-mark{position:absolute;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.35),0 2px 8px rgba(0,0,0,.3);pointer-events:none;transition:opacity .4s}
+.photo-lg{display:block;width:100%;max-height:340px;object-fit:contain;border-radius:12px;background:var(--surface2);}
+.photo-hint{font-size:11px;color:var(--text3);margin-top:6px;text-align:center}
+.sel-hint{font-size:12px;color:var(--primary);font-weight:600;margin:4px 0 0;min-height:1em}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.chips:empty{display:none}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:4px 4px 4px 8px;border-radius:14px;background:var(--surface2);border:1.5px solid var(--border);font-size:13px;font-weight:600;color:var(--text2);cursor:pointer}
+.chip.on{border-color:var(--primary);background:var(--primary-pale);color:var(--primary)}
+.chip .cdot svg,.chip > svg.ic{width:14px;height:14px}
+.chip-x{border:none;background:none;color:var(--text3);width:20px;height:20px;display:grid;place-items:center;padding:0}
+.chip-x svg.ic{width:13px;height:13px}
+.sum-edit{float:right;border:none;background:none;color:var(--primary);font-weight:700;font-size:12px;padding:0}
+.yarns{display:flex;flex-wrap:wrap;gap:4px 10px}
+.yarns .yl{display:inline-flex;align-items:center;gap:4px}
+.photo-btns{display:flex;gap:8px;margin-top:8px}
+.photo-btns .btn{flex:1;padding:9px}
+.photo-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:14px;border:2px dashed var(--primary-light);border-radius:12px;background:var(--primary-pale);color:var(--primary);font-size:14px;font-weight:700;cursor:pointer}
+.file-in{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
+.photo-add,.photo-btns label{position:relative}
+.thumb{flex:none;width:52px;height:52px;border-radius:10px;object-fit:cover;background:var(--surface2)}
+.prev{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.prev button{text-align:left;border:1.5px solid var(--border);background:var(--surface2);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text2)}
+.prev button:active{border-color:var(--primary);color:var(--primary)}
+.prev .pdate{font-size:11px;color:var(--text3);margin-right:6px}
+.started{font-size:12px;color:var(--text3);margin:-6px 0 10px;text-align:right}
+.sheet-sub{font-size:13px;color:var(--text2);margin-bottom:4px}
+.record-head{display:flex;align-items:center;gap:8px}
+.record-head .date{font-weight:700;color:var(--text)}
+.record-head .rname{flex:1;min-width:0;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.record-head .del{margin-left:auto;border:none;background:none;color:var(--text3);padding:4px;display:flex}
+.record-head .del svg.ic{width:16px;height:16px}
+.yarn{display:flex;align-items:center;gap:5px;color:var(--text2);margin-top:3px}
+.yarn svg.ic{width:15px;height:15px;color:var(--primary)}
+.rmemo{white-space:pre-wrap;margin-top:4px;color:var(--text2)}
+.empty{text-align:center;color:var(--text3);padding:50px 20px;font-size:14px}
+.empty .big{display:block;margin:0 auto 10px;width:44px;height:44px;color:var(--primary-light);stroke-width:1.5}
+.note{font-size:13px;color:var(--text3);margin:4px 0 10px}
+
+/* フォーム */
+.label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin:14px 0 4px}
+input[type=text],input[type=date],input[type=password],input[type=number],textarea{width:100%;font:inherit;font-size:16px;color:var(--text);background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;outline:none}
+input:focus,textarea:focus{border-color:var(--primary-light);background:var(--surface)}
+input[type=checkbox]{accent-color:var(--primary);width:18px;height:18px}
+textarea{resize:none}
+.edit-steps{list-style:none}
+.edit-step{display:flex;align-items:flex-start;gap:4px;margin-bottom:8px}
+.edit-step .num{padding-top:11px;color:var(--text3);font-size:12px;min-width:1.5em}
+.edit-step textarea{flex:1;min-width:0;min-height:46px}
+.edit-step .row-in{flex:none;width:3.4em;text-align:center;padding:10px 4px}
+.edit-step .dan{padding-top:12px}
+.step-btns{display:flex;flex:none}
+.mini{border:none;background:none;color:var(--text3);width:32px;height:44px;display:grid;place-items:center}
+.mini:disabled{opacity:.25}
+.mini svg.ic{width:18px;height:18px}
+.add-row{display:flex;gap:8px;margin-top:8px}
+.add-row input{flex:1}
+.bulk{margin:14px 0}
+.bulk summary{color:var(--primary);font-size:13px;font-weight:600;cursor:pointer}
+.bulk textarea{margin:8px 0}
+
+/* 下部ナビ */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--surface);border-top:2px solid var(--border);box-shadow:0 -2px 10px var(--shadow);padding-bottom:env(safe-area-inset-bottom);z-index:200}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border:none;background:none;color:var(--text3);font-size:10px}
+.nav-item svg.ic{width:23px;height:23px}
+.nav-item.active{color:var(--primary);font-weight:700}
+
+/* 同期バッジ */
+.sync-badge{flex:none;display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text3);padding:4px 8px;background:var(--surface2);border:none;border-radius:8px;white-space:nowrap}
+.sync-badge svg.ic{width:14px;height:14px}
+.sync-badge.ok{color:var(--primary)}
+.sync-badge.error{color:var(--danger)}
+.sync-badge.syncing svg{animation:blink 1s ease-in-out infinite}
+@keyframes blink{50%{opacity:.3}}
+
+/* 設定 */
+.panel{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 2px 6px var(--shadow);margin-bottom:14px}
+.panel p,.panel ol{font-size:13px;color:var(--text2)}
+.panel ol{padding-left:1.3em;margin:8px 0}
+.status{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;font-size:13px;font-weight:600;background:var(--surface2);color:var(--text2);margin-bottom:10px}
+.status.ok{background:var(--primary-pale);color:var(--primary)}
+.status.error{background:#fdeceb;color:var(--danger)}
+@media (prefers-color-scheme:dark){.status.error{background:#3a2322}}
+
+/* 完成モーダル */
+#modal{position:fixed;inset:0;background:rgba(20,50,42,.4);display:none;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;z-index:1000}
+#modal.open{display:flex}
+.ask-msg{font-size:14px;color:var(--text);white-space:pre-wrap;margin:4px 0 4px}
+.ask-sub{font-size:12px;color:var(--text3);white-space:pre-wrap;margin-top:6px}
+.btn.danger-fill{background:var(--danger);border-color:var(--danger);color:#fff}
+.actions.col{flex-direction:column}
+.sheet{background:var(--surface);width:100%;max-width:480px;border-radius:16px;padding:20px;box-shadow:0 8px 30px rgba(20,50,42,.2)}
+.sheet-close{margin-left:auto;border:none;background:none;color:var(--text3);width:36px;height:36px;margin-right:-8px;display:grid;place-items:center;border-radius:50%}
+.sheet-close:active{background:var(--surface2)}
+.sheet-title{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:700;color:var(--primary);margin-bottom:6px}
+.warn{background:#fef9eb;color:#8a6a1f;padding:8px 12px;border-radius:10px;font-size:13px;margin-top:8px}
+@media (prefers-color-scheme:dark){.warn{background:#3a321f;color:#e5c77a}}
+.checkline{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--text2);margin-top:16px}
+
+/* トースト */
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 84px);transform:translateX(-50%) translateY(20px);background:var(--primary-dark);color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:1100;white-space:nowrap;box-shadow:0 4px 12px var(--shadow)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal"></div>
+<div id="toast"></div>
+
+<script>
+/* ===== アイコン（SVG線画。外部読み込みなしでオフラインでも表示） ===== */
+const ICONS = {
+  camera:   '<path d="M14.5 4h-5L7.5 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.5z"/><circle cx="12" cy="13" r="3.5"/>',
+  clock:    '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M10 2h4"/>',
+  play:     '<path d="M7 4.5v15l12-7.5z"/>',
+  pause:    '<path d="M8 5v14"/><path d="M16 5v14"/>',
+  hook:     '<path d="M4 20 16.5 7.5"/><path d="M16.5 7.5a2.3 2.3 0 1 1 3.2-3.2L18 6"/>',
+  bookmark: '<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
+  video:    '<rect x="2" y="5" width="15" height="14" rx="2"/><path d="m17 10 5-3v10l-5-3"/>',
+  ext:      '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+  list:     '<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>',
+  yarn:     '<circle cx="12" cy="12" r="8" fill="currentColor" fill-opacity=".22"/><circle cx="12" cy="12" r="8"/>',
+  flower:   '<g fill="currentColor" fill-opacity=".18" stroke="none"><circle cx="12" cy="5.8" r="3.6"/><circle cx="17.9" cy="10.1" r="3.6"/><circle cx="15.6" cy="17" r="3.6"/><circle cx="8.4" cy="17" r="3.6"/><circle cx="6.1" cy="10.1" r="3.6"/></g><path d="M9.2 7.9a3.6 3.6 0 1 1 5.6 0a3.6 3.6 0 1 1 1.8 5.5a3.6 3.6 0 1 1-4.6 3.3a3.6 3.6 0 1 1-4.6-3.3a3.6 3.6 0 1 1 1.8-5.5z"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/>',
+  book:     '<path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  back:     '<path d="m15 18-6-6 6-6"/>',
+  chev:     '<path d="m9 18 6-6-6-6"/>',
+  up:       '<path d="m18 15-6-6-6 6"/>',
+  down:     '<path d="m6 9 6 6 6-6"/>',
+  x:        '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  check:    '<path d="M20 6 9 17l-5-5"/>',
+  plus:     '<path d="M12 5v14"/><path d="M5 12h14"/>',
+  pen:      '<path d="M17 3a2.85 2.85 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>',
+  reset:    '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+  award:    '<circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/>',
+  trash:    '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  cloud:    '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/>',
+  cloudOff: '<path d="m2 2 20 20"/><path d="M5.78 5.78A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.31-.19"/><path d="M21.53 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7 7 0 0 0 10 5.07"/>',
+};
+const ic = name => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+
+/* ===== 基本 ===== */
+const KEY = 'amimono-note';
+const OLD_KEY = 'amime-check-v1';   // 旧名のデータがあれば引き継ぐ
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const fmtDate = s => (s || '').replaceAll('-', '/');
+const daysBetween = (a, b) => { if (!a || !b) return null; const d = Math.round((Date.parse(b) - Date.parse(a)) / 864e5) + 1; return d > 0 ? d : null; };
+// ---- タイマー（押した時刻を覚えて差を足す方式。アプリを閉じてもずれない） ----
+const elapsed = p => (p.timer?.total || 0) + (p.timer?.running ? Date.now() - p.timer.running : 0);
+const pad = n => String(n).padStart(2, '0');
+const clock = ms => { const t = Math.floor(ms / 1000); return `${Math.floor(t / 3600)}:${pad(Math.floor(t / 60) % 60)}:${pad(t % 60)}`; };
+const fmtMin = min => { if (!min) return ''; const h = Math.floor(min / 60), m = min % 60; return h ? `${h}時間${m ? pad(m) + '分' : ''}` : `${m}分`; };
+function markDay(p) {   // 今日を「編んだ日」に加える
+  const t = today();
+  p.workDays = p.workDays || [];
+  if (!p.workDays.includes(t)) p.workDays.push(t);
+  if (!p.startedAt) p.startedAt = t;
+}
+function startTimer(p) {
+  state.patterns.forEach(q => { if (q !== p && q.timer?.running) stopTimer(q); });   // 動かすのは1作品だけ
+  p.timer = { total: p.timer?.total || 0, running: Date.now() };
+  markDay(p);
+}
+function stopTimer(p, addMs) {
+  if (!p.timer?.running) return;
+  p.timer.total = (p.timer.total || 0) + (addMs ?? Date.now() - p.timer.running);
+  p.timer.running = null;
+}
+function clearRun(p) { delete p.timer; delete p.workDays; delete p.startedAt; delete p.run; }
+
+// ---- 今回の材料（糸・針・作り目）：編みはじめに入れて、完成の記録へそのまま引き継ぐ ----
+const castLabel = c => c ? (/^\d+$/.test(c) ? `${c}目` : c) : '';
+// 糸は複数持てる：yarns = [{ name, hex }]。前の形（yarn/color/colorHex）も読めるようにする
+const yarnsOf = m => Array.isArray(m?.yarns) ? m.yarns
+  : (m?.yarn || m?.color) ? [{ name: [m.yarn, m.color].filter(Boolean).join(''), hex: m.colorHex || '' }] : [];
+const hexesOf = m => yarnsOf(m).map(y => y.hex).filter(Boolean);
+const matText = m => [yarnsOf(m).map(y => y.name).join('・'), m?.hook, m?.cast ? '作り目 ' + castLabel(m.cast) : ''].filter(Boolean).join('／');
+const okHex = h => /^#[0-9a-f]{6}$/i.test(h || '') ? h : '';
+// 毛糸の色の○。色が複数なら○を色で分ける（色がなければいつもの○）
+function colorDot(hexes, size = 18) {
+  const cs = [].concat(hexes || []).map(okHex).filter(Boolean);
+  if (!cs.length) return ic('yarn');
+  const n = cs.length, pt = a => `${12 + 8.5 * Math.cos(a)} ${12 + 8.5 * Math.sin(a)}`;
+  const body = n === 1 ? `<circle cx="12" cy="12" r="8.5" fill="${cs[0]}"/>`
+    : cs.map((c, i) => { const a0 = -Math.PI / 2 + 2 * Math.PI * i / n, a1 = -Math.PI / 2 + 2 * Math.PI * (i + 1) / n;
+        return `<path d="M12 12L${pt(a0)}A8.5 8.5 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${pt(a1)}Z" fill="${c}"/>`; }).join('');
+  return `<span class="cdot"><svg width="${size}" height="${size}" viewBox="0 0 24 24">${body}<circle cx="12" cy="12" r="8.5" fill="none" stroke="rgba(0,0,0,.22)" stroke-width="1.5"/></svg></span>`;
+}
+const COLORS = [
+  ['生成り', '#f3ecd9'], ['白', '#ffffff'], ['ベージュ', '#d9c3a0'], ['茶', '#9b6b4a'], ['グレー', '#9aa3a7'], ['黒', '#3a3a3a'],
+  ['赤', '#d9534f'], ['ピンク', '#f2a7b8'], ['オレンジ', '#f0a04b'], ['黄', '#f2d25c'], ['緑', '#6cbf84'], ['水色', '#8fd0e8'], ['青', '#4f7fd1'], ['紫', '#a58ad6'],
+];
+const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+function nearestName(hex) {   // いちばん近い色の名前
+  const [r, g, b] = rgb(hex);
+  return COLORS.map(([n, h]) => { const [R, G, B] = rgb(h); return [n, (r - R) ** 2 * 2 + (g - G) ** 2 * 4 + (b - B) ** 2 * 3]; }).sort((a, b) => a[1] - b[1])[0][0];
+}
+// 糸（タグ）・色・針・作り目の入力欄（今回の材料／完成／記録の編集で共通）
+const firstSel = ys => { const i = ys.findIndex(y => !okHex(y.hex)); return i >= 0 ? i : ys.length - 1; };
+const colorMode = () => false;   // 色は写真で見るので、色の入力はしない（前に入れた色のデータはそのまま残す）
+function chipsHtml(px, ys, sel) {
+  const c = colorMode(px);
+  return ys.map((y, i) => `<span class="chip ${c && i === sel ? 'on' : ''}" ${c ? `data-action="chipsel" data-px="${px}" data-idx="${i}"` : ''}>${colorDot(y.hex, 14)}${esc(y.name || '色')}<button class="chip-x" data-action="chipdel" data-px="${px}" data-idx="${i}" aria-label="削除">${ic('x')}</button></span>`).join('');
+}
+function swatchesHtml(px, hex) {
+  return `<button class="sw none ${hex ? '' : 'on'}" data-action="swatch" data-hex="" aria-label="色なし">なし</button>
+    ${COLORS.map(([n, h]) => `<button class="sw ${hex === h ? 'on' : ''}" style="background:${h}" data-action="swatch" data-hex="${h}" data-name="${n}" aria-label="${n}"></button>`).join('')}
+    <label class="sw pick ${hex && !COLORS.some(c => c[1] === hex) ? 'on' : ''}" aria-label="ほかの色"><input type="color" id="${px}Pick" value="${hex || '#2f9e7c'}"></label>`;
+}
+// 色の付け方の案内
+//  ・糸をタップして選んだとき → その糸の色を直す
+//  ・まだ色のない糸があるとき → その糸に付ける
+//  ・全部の糸に色があるとき   → 新しい色（糸）として追加する
+function selHint(px, ys, sel, explicit) {
+  if (!colorMode(px)) return '';
+  if (explicit && ys[sel]) return `「${ys[sel].name || '色'}」の色を直します（写真をタップ、または下の色から）`;
+  const i = ys.findIndex(y => !okHex(y.hex));
+  if (i >= 0) return `「${ys[i].name || '色'}」に色を付けます（写真をタップ、または下の色から）`;
+  return '写真や色をタップすると、新しい色として追加します（直したいときは糸をタップ）';
+}
+function matFields(px, m = {}) {
+  const ys = yarnsOf(m), sel = firstSel(ys), c = colorMode(px);
+  return `<div class="matf" data-px="${px}">
+    <label class="label">糸（スペースで確定）</label>
+    <input type="hidden" id="${px}Yarns" value="${esc(JSON.stringify(ys))}">
+    <div class="chips" id="${px}Chips" data-sel="${sel}">${chipsHtml(px, ys, sel)}</div>
+    <input type="text" id="${px}YarnIn" class="yarn-in" data-px="${px}" placeholder="例：コットン生成り" enterkeyhint="done">
+    ${c ? `<p class="sel-hint" id="${px}Hint">${esc(selHint(px, ys, sel, false))}</p><div class="swatches" data-px="${px}">${swatchesHtml(px, okHex(ys[sel]?.hex))}</div>` : ''}
+    <div class="dates">
+      <div><label class="label">針</label><input type="text" id="${px}Hook" class="hook-in" value="${esc(m.hook || '')}" placeholder="例：5（→5/0号）" inputmode="decimal"></div>
+      <div><label class="label">作り目</label><input type="text" id="${px}Cast" value="${esc(m.cast || '')}" placeholder="例：30" inputmode="numeric"></div>
+    </div></div>`;
+}
+const getYs = px => { try { return JSON.parse(document.getElementById(px + 'Yarns').value || '[]'); } catch (e) { return []; } };
+function setYs(px, ys, sel, explicit = false) {
+  document.getElementById(px + 'Yarns').value = JSON.stringify(ys);
+  const chips = document.getElementById(px + 'Chips');
+  chips.dataset.sel = sel; chips.dataset.explicit = explicit ? '1' : '';
+  chips.innerHTML = chipsHtml(px, ys, explicit ? sel : -1);
+  const sw = modal.querySelector(`.swatches[data-px="${px}"]`);
+  if (sw) sw.innerHTML = swatchesHtml(px, okHex(ys[sel]?.hex));
+  const hint = document.getElementById(px + 'Hint');
+  if (hint) hint.textContent = selHint(px, ys, sel, explicit);
+}
+function addYarn(px, name) { const ys = getYs(px); ys.push({ name, hex: '' }); setYs(px, ys, firstSel(ys)); }
+// 色を付ける
+function applyColor(px, hex, name) {
+  const ys = getYs(px), chips = document.getElementById(px + 'Chips');
+  let sel = +chips.dataset.sel;
+  const explicit = chips.dataset.explicit === '1' && ys[sel];
+  if (!hex) {   // 「なし」：選んでいる糸の色を消す
+    if (explicit) ys[sel].hex = '';
+    setYs(px, ys, sel); return;
+  }
+  if (explicit) {                                        // タップして選んだ糸 → 直す
+    ys[sel].hex = hex;
+    if (COLORS.some(c => c[0] === ys[sel].name)) ys[sel].name = name || nearestName(hex);   // 色の名前だけの糸なら名前も合わせる
+  }
+  else {
+    const i = ys.findIndex(y => !okHex(y.hex));
+    if (i >= 0) ys[i].hex = hex;                         // 色のない糸 → 付ける
+    else ys.push({ name: name || nearestName(hex), hex });   // 全部付いている → 追加
+  }
+  setYs(px, ys, firstSel(ys));
+}
+function flushYarnIn(px) {   // 入力途中の文字も糸として確定
+  const i = document.getElementById(px + 'YarnIn');
+  if (i && i.value.trim()) { addYarn(px, i.value.trim()); i.value = ''; }
+}
+// かぎ針の号数：「7」「7/0」→「7/0号」、「7.5」→「7.5/0号」。mmなどはそのまま
+function normHook(h) {
+  h = String(h || '').trim().replace(/[０-９．／]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  if (/^\d+(\.\d+)?$/.test(h)) return `${h}/0号`;
+  if (/^\d+(\.\d+)?\/0$/.test(h)) return `${h}号`;
+  return h;
+}
+const readMat = (v, px) => {
+  let ys = []; try { ys = JSON.parse(v[px + 'Yarns'] || '[]'); } catch (e) {}
+  const pend = (v[px + 'YarnIn'] || '').trim(); if (pend) ys.push({ name: pend, hex: '' });
+  ys = ys.filter(y => y.name || y.hex).map(y => ({ name: String(y.name || '').trim(), hex: okHex(y.hex) }));
+  return { yarns: ys, yarn: undefined, color: undefined, colorHex: undefined,
+    hook: normHook(v[px + 'Hook']), cast: (v[px + 'Cast'] || '').trim().replace(/目$/, '') };
+};
+const inputVals = () => { const v = {}; modal.querySelectorAll('input,textarea').forEach(i => { if (i.id) v[i.id] = i.value; }); return v; };
+
+// 写真をタップして色を拾う
+// 毛糸は影やテカリが混ざるので、タップした周り（写真の約6%の範囲）から
+// 暗すぎる所・明るすぎる所を除いて、残りの真ん中の色を使う
+const photoCanvas = {};
+function pickFromPhoto(e, img) {
+  if (!img.naturalWidth) return;
+  if (!document.getElementById('mChips')) expandMat();
+  const r = img.getBoundingClientRect(), k = Math.min(r.width / img.naturalWidth, r.height / img.naturalHeight);
+  const ox = (r.width - img.naturalWidth * k) / 2, oy = (r.height - img.naturalHeight * k) / 2;
+  const x = Math.round((e.clientX - r.left - ox) / k), y = Math.round((e.clientY - r.top - oy) / k);
+  if (x < 0 || y < 0 || x >= img.naturalWidth || y >= img.naturalHeight) return;
+  let c = photoCanvas[img.src];
+  if (!c) {
+    c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+    c.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0); photoCanvas[img.src] = c;
+  }
+  const rad = Math.max(6, Math.round(Math.min(c.width, c.height) * 0.03));
+  const x0 = Math.max(0, x - rad), y0 = Math.max(0, y - rad);
+  const w = Math.min(c.width, x + rad + 1) - x0, h = Math.min(c.height, y + rad + 1) - y0;
+  const d = c.getContext('2d', { willReadFrequently: true }).getImageData(x0, y0, w, h).data;
+  const px = [];
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    if ((x0 + i - x) ** 2 + (y0 + j - y) ** 2 > rad * rad) continue;   // 円の中だけ
+    const o = (j * w + i) * 4, R = d[o], G = d[o + 1], B = d[o + 2];
+    px.push([R, G, B, 0.299 * R + 0.587 * G + 0.114 * B]);
+  }
+  px.sort((a, b) => a[3] - b[3]);
+  const mid = px.slice(Math.floor(px.length * 0.3), Math.ceil(px.length * 0.85));   // 影(暗い30%)とテカリ(明るい15%)を除く
+  const med = ch => { const v = mid.map(p => p[ch]).sort((a, b) => a - b); return v[Math.floor(v.length / 2)]; };
+  const hex = '#' + [0, 1, 2].map(ch => med(ch).toString(16).padStart(2, '0')).join('');
+  applyColor('m', hex);
+  // タップした場所に、拾った色の丸を少し出す
+  const box = document.getElementById('photoBox'), br = box.getBoundingClientRect();
+  box.querySelector('.pick-mark')?.remove();
+  const mk = document.createElement('div'); mk.className = 'pick-mark';
+  mk.style.cssText = `left:${e.clientX - br.left}px;top:${e.clientY - br.top}px;background:${hex}`;
+  box.appendChild(mk); setTimeout(() => { mk.style.opacity = '0'; setTimeout(() => mk.remove(), 400); }, 1200);
+  toast(`${nearestName(hex)}っぽい色を拾いました`);
+}
+// 完成画面のまとめ表示 → 入力欄に切り替える
+function expandMat() {
+  const box = document.getElementById('matBox');
+  if (!box || document.getElementById('mChips')) return;
+  const v = inputVals();
+  box.innerHTML = matFields('m', { yarns: JSON.parse(v.mYarns || '[]'), hook: v.mHook, cast: v.mCast });
+}
+function prevCombos(p) {   // 過去の記録から、重ならない組み合わせを新しい順に3つ
+  const seen = new Set(), out = [];
+  for (const r of recordsOf(p.id).sort(byDateDesc)) {
+    const key = matText(r);
+    if (!key || seen.has(key)) continue;
+    seen.add(key); out.push(r);
+    if (out.length >= 3) break;
+  }
+  return out;
+}
+function matView(p) {
+  const t = matText(p.run);
+  if (!t) return `<div class="mat mat-empty" data-action="mat" role="button">${ic('yarn')}今回の糸・針・作り目を入れる</div>`;
+  return `<div class="mat" data-action="mat" role="button">${ic('yarn')}<span class="mbody"><span class="mlabel">今回の材料</span><span class="mval">${esc(t)}</span></span><span class="mpen">${ic('pen')}</span></div>`;
+}
+function editMat(p) {
+  const m = p.run || {}, prev = prevCombos(p);
+  sheet(`<div class="sheet-title">${ic('flower')}今回の材料<button class="sheet-close" data-action="modal-close" aria-label="閉じる">${ic('x')}</button></div>
+    ${prev.length ? `<label class="label">前に使った組み合わせ（タップで入ります）</label>
+      <div class="prev">${prev.map((r, i) => `<button data-action="fillprev" data-idx="${i}"><span class="pdate">${fmtDate(r.date)}</span>${esc(matText(r))}</button>`).join('')}</div>` : ''}
+    ${matFields('r', m)}
+    <div class="actions"><button class="btn" data-ans="">やめる</button><button class="btn primary" data-ans="save">保存</button></div>`);
+  modalResolve = v => {
+    if (v !== 'save') return;
+    p.run = readMat(formVals, 'r');
+    p.updatedAt = Date.now(); save(); update();
+  };
+}
+setInterval(() => {
+  const el = document.getElementById('timerTime'), p = findP(view.id);
+  if (el && p?.timer?.running) el.textContent = clock(elapsed(p));
+}, 1000);
+
+const daysLabel = r => { const d = daysBetween(r.start, r.date); return [d ? `${d}日` : '', fmtMin(r.timeMin)].filter(Boolean).join('・'); };
+const byDateDesc = (a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0);
+// 「1段目：細編み」「3〜5段 長編み」のように書かれていたら段数と内容に分ける
+function parseStep(text) {
+  const m = String(text).match(/^\s*(\d+(?:\s*[〜~\-ー－]\s*\d+)?)\s*段目?\s*[：:、,\s]\s*(.+)$/);
+  return m ? { row: m[1].replace(/\s+/g, '').replace(/[~\-ー－]/, '〜'), text: m[2].trim() } : { row: '', text: String(text).trim() };
+}
+const rowLabel = r => r ? `${r}段目` : '';
+// 次の段数の候補：最後の工程の段数（範囲なら終わりの数）＋1
+// 次の段数の候補：いちばん最後に段数が入っている工程の＋1。まだ1つもなければ1段目
+function nextRow(steps) {
+  for (let i = steps.length - 1; i >= 0; i--) {
+    const m = String(steps[i].row || '').match(/(\d+)$/);
+    if (m) return String(+m[1] + 1);
+  }
+  return '1';
+}
+const fixSteps = ps => ps.map(p => ({ ...p, steps: (p.steps || []).map(st => st.row === undefined ? { ...st, ...parseStep(st.text) } : st) }));
+const normalize = d => ({ patterns: Array.isArray(d?.patterns) ? fixSteps(d.patterns) : [], records: Array.isArray(d?.records) ? d.records : [], updatedAt: d?.updatedAt || 0 });
+const isEmpty = s => !s.patterns.length && !s.records.length;
+
+let state = load();          // { patterns: [], records: [], updatedAt }
+let view = { screen: 'home', id: null };
+let draft = null;            // 編集中の作品（保存するまで本体に反映しない）
+
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY) || localStorage.getItem(OLD_KEY));
+    if (d) return normalize(d);
+  } catch (e) {}
+  return normalize(null);
+}
+function store() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} idbSet('state', state); }
+
+/* IndexedDBにも同じ内容を控えておく（localStorageだけ消えたときの保険。writing-studioと同じ方式） */
+function idb() {
+  return new Promise((ok, ng) => {
+    const r = indexedDB.open('amimono-note', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => ok(r.result); r.onerror = () => ng(r.error);
+  });
+}
+async function idbSet(k, v) { try { const db = await idb(); db.transaction('kv', 'readwrite').objectStore('kv').put(JSON.stringify(v), k); } catch (e) {} }
+async function idbDel(k) { try { const db = await idb(); db.transaction('kv', 'readwrite').objectStore('kv').delete(k); } catch (e) {} }
+async function idbGet(k) {
+  try {
+    const db = await idb();
+    return await new Promise(ok => { const r = db.transaction('kv').objectStore('kv').get(k); r.onsuccess = () => ok(r.result ? JSON.parse(r.result) : null); r.onerror = () => ok(null); });
+  } catch (e) { return null; }
+}
+// 変更のたびに呼ぶ：端末に保存 → 少し待ってクラウドへ
+function save() { state.updatedAt = Date.now(); store(); schedulePush(); syncTimerNote(); }
+
+/* ===== タイマーの通知（Android向け。数字は動かないので「〇時〇分から」を出す） ===== */
+const NOTE_TAG = 'amimono-timer';
+const hhmm = ts => { const d = new Date(ts); return `${d.getHours()}:${pad(d.getMinutes())}`; };
+async function noteReg() {
+  try { return ('serviceWorker' in navigator) ? await navigator.serviceWorker.getRegistration() : null; } catch (e) { return null; }
+}
+async function syncTimerNote() {
+  const reg = await noteReg();
+  if (!reg || !reg.showNotification) return;
+  const p = state.patterns.find(q => q.timer?.running);
+  const shown = await reg.getNotifications({ tag: NOTE_TAG }).catch(() => []);
+  if (!p || !('Notification' in window) || Notification.permission !== 'granted') { shown.forEach(n => n.close()); return; }
+  if (shown.some(n => n.data?.pid === p.id && n.data?.running === p.timer.running)) return;   // 同じ内容なら出し直さない
+  const d = new Date(p.timer.running), sameDay = d.toDateString() === new Date().toDateString();
+  reg.showNotification(`${p.name}　編み中`, {
+    body: `${sameDay ? '' : `${d.getMonth() + 1}/${d.getDate()} `}${hhmm(p.timer.running)} から編んでいます`,
+    tag: NOTE_TAG, requireInteraction: true, silent: true, renotify: false,
+    icon: 'icon-192.png', badge: 'icon-192.png',
+    actions: [{ action: 'stop', title: '休憩' }],
+    data: { pid: p.id, running: p.timer.running },
+  }).catch(() => {});
+}
+// 通知の「休憩」から止めたとき：押した時刻で止める（アプリが寝ていて届くのが遅れてもずれない）
+function remoteStop(pid, at) {
+  const p = findP(pid);
+  if (!p?.timer?.running) return;
+  stopTimer(p, Math.max(0, (at || Date.now()) - p.timer.running));
+  p.updatedAt = Date.now(); save();
+  if (view.screen === 'pattern' && view.id === pid) update(); else render();
+  toast('休憩にしました');
+}
+navigator.serviceWorker?.addEventListener('message', e => {
+  const m = e.data || {};
+  if (m.type === 'timer-stop') remoteStop(m.pid, m.at);
+  if (m.type === 'open' && findP(m.pid)) { closeModal(); go('pattern', m.pid); }
+});
+
+const findP = id => state.patterns.find(p => p.id === id);
+const recordsOf = id => state.records.filter(r => r.patternId === id);
+
+function go(screen, id = null) { view = { screen, id }; render(); window.scrollTo(0, 0); if (screen === 'pattern') checkLongTimer(); }
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+function autoGrow(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; }
+
+/* ===== クラウド同期（GitHub Gist） =====
+   ・変更は自動でGistに保存（1.5秒まとめて送信）
+   ・起動時／アプリに戻ったときにGistを確認し、新しいほうを採用
+   ・キャッシュを消しても、トークンを入れ直せばGistから復元できる */
+const SYNC_KEY = 'amimono-note-sync';
+const FILE = 'amimono-note.json';
+let sync = (() => { try { return JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; } catch (e) { return {}; } })();
+let syncStatus = sync.token ? 'syncing' : 'off';   // off / syncing / ok / error
+let syncError = '';
+let pushTimer = null, dirty = false, busy = false;
+
+function saveSync() { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch (e) {} idbSet('sync', sync); }
+
+async function gh(path, opts = {}) {
+  const res = await fetch('https://api.github.com' + path, {
+    ...opts,
+    headers: { Authorization: 'Bearer ' + sync.token, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }
+  });
+  if (!res.ok) {
+    const e = new Error(String(res.status)); e.status = res.status; throw e;
+  }
+  return res.json();
+}
+async function findGist() {
+  for (let page = 1; page <= 10; page++) {
+    const list = await gh(`/gists?per_page=100&page=${page}`);
+    const g = list.find(g => g.files && g.files[FILE]);
+    if (g) return g.id;
+    if (list.length < 100) break;
+  }
+  return null;
+}
+async function readGist() {
+  const g = await gh('/gists/' + sync.gistId);
+  const f = g.files[FILE];
+  if (!f) return null;
+  const text = f.truncated ? await (await fetch(f.raw_url)).text() : f.content;
+  return normalize(JSON.parse(text));
+}
+async function writeGist(keepalive = false) {
+  const files = { [FILE]: { content: JSON.stringify(state) } };
+  if (sync.gistId) {
+    await gh('/gists/' + sync.gistId, { method: 'PATCH', body: JSON.stringify({ files }), keepalive });
+  } else {
+    const g = await gh('/gists', { method: 'POST', body: JSON.stringify({ description: 'あみものノート データ', public: false, files }) });
+    sync.gistId = g.id; saveSync();
+  }
+}
+
+function setSync(status, err = '') {
+  syncStatus = status; syncError = err;
+  const b = document.getElementById('syncBadge');
+  if (b) b.outerHTML = syncBadge();
+  if (view.screen === 'settings' && !document.activeElement?.matches('input')) render();
+}
+function errText(e) {
+  if (!navigator.onLine) return 'オフラインです。つながったら自動で保存します';
+  if (e.status === 401) return 'トークンが無効です。入れ直してください';
+  if (e.status === 403 || e.status === 404) return 'Gistにアクセスできません。トークンの権限を確認してください';
+  return '保存に失敗しました。あとで自動で再試行します';
+}
+
+function schedulePush() {
+  if (!sync.token) return;
+  dirty = true; setSync('syncing');
+  clearTimeout(pushTimer); pushTimer = setTimeout(flush, 1500);
+}
+async function flush(keepalive = false) {
+  if (!sync.token || !dirty) return;
+  if (busy) { pushTimer = setTimeout(flush, 800); return; }
+  busy = true; dirty = false; clearTimeout(pushTimer);
+  try { await writeGist(keepalive); if (!keepalive) await pushPhotos(); setSync(dirty ? 'syncing' : 'ok'); }
+  catch (e) { dirty = true; setSync('error', errText(e)); }
+  finally { busy = false; }
+}
+// クラウドと突き合わせ：新しいほうを採用
+async function pull() {
+  if (!sync.token || busy || dirty) return;
+  busy = true; setSync('syncing');
+  try {
+    if (!sync.gistId) { sync.gistId = await findGist(); saveSync(); }
+    const remote = sync.gistId ? await readGist() : null;
+    if (remote && remote.updatedAt > state.updatedAt) {
+      state = remote; store(); syncTimerNote();
+      if (view.screen !== 'edit') update();
+    } else if (!remote || state.updatedAt > remote.updatedAt) {
+      dirty = true;
+    }
+    setSync('ok');
+  } catch (e) { setSync('error', errText(e)); }
+  finally { busy = false; }
+  if (dirty) flush();
+  pullPhotos().catch(() => {});
+}
+async function connect(token) {
+  sync = { token }; photoUp = new Set(); savePhotoUp(); setSync('syncing');
+  try {
+    sync.gistId = await findGist(); saveSync();   // トークンが通ってから保存する
+    const remote = sync.gistId ? await readGist() : null;
+    if (remote && !isEmpty(remote)) {
+      let pick = 'a';
+      if (!isEmpty(state)) {
+        pick = await askChoice(`クラウドに保存されたデータ（作品 ${remote.patterns.length} 件・記録 ${remote.records.length} 件）があります。どちらを使いますか？`,
+          'クラウドのデータを読み込む', 'この端末のデータで上書きする');
+        if (!pick) { sync = {}; saveSync(); setSync('off'); return; }   // やめた場合は接続しない
+      }
+      if (pick === 'a') { state = remote; store(); setSync('ok'); go('home'); toast('クラウドから復元しました'); pullPhotos().catch(() => {}); return; }
+    }
+    dirty = true; await flush();
+    if (syncStatus === 'ok') toast('クラウド保存をはじめました');
+  } catch (e) {
+    if (!localStorage.getItem(SYNC_KEY) || !JSON.parse(localStorage.getItem(SYNC_KEY)).token) { sync = {}; setSync('off', errText(e)); }
+    else setSync('error', errText(e));
+  }
+}
+function disconnect() {
+  clearTimeout(pushTimer); dirty = false;
+  photoUp = new Set(); savePhotoUp();
+  sync = {}; saveSync(); setSync('off');
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flush(true);   // アプリを閉じる前に送る
+  else { pull(); checkLongTimer(); }                         // 戻ってきたら他の端末の変更を確認
+});
+window.addEventListener('online', () => { if (dirty) flush(); else pull(); });
+
+/* ===== 写真（1記録1枚。小さくしてIndexedDBへ、クラウドは写真専用のGistへ1枚ずつ） ===== */
+const photoCache = {};
+async function getPhoto(id) {
+  if (!id) return null;
+  if (photoCache[id]) return photoCache[id];
+  const d = await idbGet('photo:' + id);
+  if (d) photoCache[id] = d;
+  return d;
+}
+function putPhoto(id, data) { photoCache[id] = data; return idbSet('photo:' + id, data); }
+function delPhoto(id) { if (!id) return; delete photoCache[id]; idbDel('photo:' + id); }
+// 横800pxまでに縮めてJPEGに（1枚およそ100KB）
+async function shrink(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image(); img.src = url; await img.decode();
+    const k = Math.min(1, 800 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.75);
+  } finally { URL.revokeObjectURL(url); }
+}
+// data-photo の付いた<img>に写真を入れる
+function hydratePhotos(root = document) {
+  root.querySelectorAll('img[data-photo]').forEach(async img => {
+    const d = await getPhoto(img.dataset.photo);
+    if (d) img.src = d; else img.style.visibility = 'hidden';
+  });
+}
+
+const PFILE = 'amimono-note-photos.json';
+const UP_KEY = 'amimono-note-photos-up';
+let photoUp = new Set((() => { try { return JSON.parse(localStorage.getItem(UP_KEY)) || []; } catch (e) { return []; } })());
+const savePhotoUp = () => { try { localStorage.setItem(UP_KEY, JSON.stringify([...photoUp])); } catch (e) {} };
+const usedPhotos = () => new Set(state.records.map(r => r.photo).filter(Boolean));
+async function findPhotoGist() {
+  for (let page = 1; page <= 10; page++) {
+    const list = await gh(`/gists?per_page=100&page=${page}`);
+    const g = list.find(g => g.files && g.files[PFILE]);
+    if (g) return g.id;
+    if (list.length < 100) break;
+  }
+  return null;
+}
+// まだ送っていない写真を送り、使わなくなった写真を消す（5枚ずつ）
+async function pushPhotos() {
+  if (!sync.token) return;
+  const want = usedPhotos(), add = [];
+  for (const id of want) if (!photoUp.has(id)) { const d = await getPhoto(id); if (d) add.push([id, d]); }
+  const gone = [...photoUp].filter(id => !want.has(id));
+  if (!add.length && !gone.length) return;
+  if (!sync.photoGistId) { sync.photoGistId = await findPhotoGist(); saveSync(); }
+  if (!sync.photoGistId) {
+    const g = await gh('/gists', { method: 'POST', body: JSON.stringify({ description: 'あみものノート 写真', public: false, files: { [PFILE]: { content: '{"app":"amimono-note-photos"}' } } }) });
+    sync.photoGistId = g.id; saveSync();
+  }
+  for (let i = 0; i < add.length; i += 5) {
+    const files = {};
+    add.slice(i, i + 5).forEach(([id, d]) => files[`p-${id}.txt`] = { content: d });
+    await gh('/gists/' + sync.photoGistId, { method: 'PATCH', body: JSON.stringify({ files }) });
+    add.slice(i, i + 5).forEach(([id]) => photoUp.add(id)); savePhotoUp();
+  }
+  if (gone.length) {
+    const files = {}; gone.forEach(id => files[`p-${id}.txt`] = null);
+    await gh('/gists/' + sync.photoGistId, { method: 'PATCH', body: JSON.stringify({ files }) }).catch(() => {});
+    gone.forEach(id => photoUp.delete(id)); savePhotoUp();
+  }
+}
+// この端末にない写真だけクラウドから取ってくる
+async function pullPhotos() {
+  if (!sync.token) return;
+  const missing = [];
+  for (const id of usedPhotos()) if (!(await getPhoto(id))) missing.push(id);
+  if (!missing.length) return;
+  if (!sync.photoGistId) { sync.photoGistId = await findPhotoGist(); saveSync(); }
+  if (!sync.photoGistId) return;
+  const g = await gh('/gists/' + sync.photoGistId);
+  for (const id of missing) {
+    const f = g.files[`p-${id}.txt`];
+    if (!f) continue;
+    const d = f.truncated ? await (await fetch(f.raw_url)).text() : f.content;
+    await putPhoto(id, d); photoUp.add(id);
+  }
+  savePhotoUp(); hydratePhotos();
+}
+
+// 記録フォームの写真欄。pendingPhoto：undefined＝そのまま／null＝外す／文字列＝新しい写真
+let pendingPhoto;
+function photoBox(id) {
+  const src = typeof pendingPhoto === 'string' ? pendingPhoto : pendingPhoto === null ? null : id;
+  const input = `<input type="file" accept="image/*" class="file-in" id="photoFile">`;
+  if (!src) return `<label class="photo-add">${ic('camera')}できあがりの写真を追加${input}</label>`;
+  const img = typeof pendingPhoto === 'string' ? `<img class="photo-lg" src="${pendingPhoto}" alt="">` : `<img class="photo-lg" data-photo="${esc(id)}" alt="">`;
+  return `${img}<div class="photo-btns"><label class="btn outline">${ic('camera')}変える${input}</label><button class="btn" data-action="photodel">外す</button></div>`;
+}
+function refreshPhotoBox() {
+  const box = document.getElementById('photoBox');
+  if (!box) return;
+  box.innerHTML = photoBox(box.dataset.id); hydratePhotos(box);
+}
+// 保存時：新しい写真ならIDを振ってしまう。戻り値は記録に入れる写真ID
+async function commitPhoto(oldId) {
+  if (pendingPhoto === undefined) return oldId;
+  if (oldId) delPhoto(oldId);
+  if (pendingPhoto === null) return undefined;
+  const id = uid(); await putPhoto(id, pendingPhoto); return id;
+}
+
+/* ===== 描画 ===== */
+function render() {
+  const s = view.screen;
+  if (s === 'pattern' && !findP(view.id)) view = { screen: 'home', id: null };
+  if (s === 'edit' && !draft) view = { screen: 'home', id: null };
+
+  const screens = { home: homeView, pattern: patternView, edit: editView, records: recordsView, settings: settingsView };
+  document.getElementById('app').innerHTML = screens[view.screen]() + navView();
+  document.querySelectorAll('textarea[data-field]').forEach(autoGrow);
+  hydratePhotos();
+}
+
+function syncBadge() {
+  if (syncStatus === 'off') return '<span id="syncBadge"></span>';
+  const icon = syncStatus === 'error' ? 'cloudOff' : 'cloud';
+  const label = { syncing: '保存中', ok: '保存済み', error: '未保存' }[syncStatus];
+  return `<button class="sync-badge ${syncStatus}" id="syncBadge" data-action="tab" data-tab="settings">${ic(icon)}${label}</button>`;
+}
+const header = (title, logo) => `<header class="header"><h1>${logo ? `<span class="logo">${ic('flower')}</span>` : ''}${title}</h1>${syncBadge()}</header>`;
+const subHeader = (left, title, right) => `<header class="header">${left}<h1 class="sub">${title}</h1>${right}</header>`;
+
+function navView() {
+  if (!['home', 'records', 'settings'].includes(view.screen)) return '';
+  const t = (k, label, i) => `<button class="nav-item ${view.screen === k ? 'active' : ''}" data-action="tab" data-tab="${k}">${ic(i)}${label}</button>`;
+  return `<nav class="bottom-nav">${t('home', 'リスト', 'list')}${t('records', '記録', 'book')}${t('settings', '設定', 'settings')}</nav>`;
+}
+
+function progressOf(p) {
+  const done = p.steps.filter(x => x.done).length, total = p.steps.length;
+  return { done, total, pct: total ? Math.round(done / total * 100) : 0 };
+}
+
+/* 作品リスト */
+function pausedLabel(p) {
+  const st = p.steps.find(isPaused);
+  if (!st) return '';
+  return `<span class="badge">${ic('bookmark')}${esc(st.row ? rowLabel(st.row) : st.text.slice(0, 8))}${st.pause ? ' ' + esc(st.pause) : ''}</span>`;
+}
+function homeView() {
+  const list = state.patterns.map(p => {
+    const { done, total, pct } = progressOf(p);
+    const n = recordsOf(p.id).length;
+    return `<li><div class="row" data-action="open" data-id="${p.id}" role="button">
+      <span class="row-icon">${(ph => ph ? `<img class="row-photo" data-photo="${esc(ph)}" alt="">` : ic('yarn'))(recordsOf(p.id).sort(byDateDesc).find(r => r.photo)?.photo)}</span>
+      <div class="row-main">
+        <div class="row-title">${esc(p.name)}</div>
+        <div class="row-meta">${p.timer?.running ? `<span class="badge">${ic('clock')}編み中</span>` : ''}${pausedLabel(p)}<span>${done} / ${total} 工程</span><div class="bar"><span style="width:${pct}%"></span></div>${n ? `<span class="badge">完成 ${n}</span>` : ''}</div>
+      </div>
+      <button class="row-del" data-action="delpattern" data-id="${p.id}" aria-label="削除">${ic('trash')}</button>
+    </div></li>`;
+  }).join('');
+  return `${header('あみものノート', true)}
+  <main>
+    <button class="btn-add" data-action="new">${ic('plus')}新しい作品</button>
+    ${list ? `<ul class="list">${list}</ul>` : `<p class="empty">${bigIc('flower')}まだ作品がありません。<br>「新しい作品」から工程を登録しましょう。</p>`}
+  </main>`;
+}
+const bigIc = name => ic(name).replace('class="ic"', 'class="ic big"');
+
+/* 工程チェック画面
+   動画を再生したままチェックや追加ができるよう、動画より下（#pbody）だけを書き換える */
+let videoOpen = true;
+
+function youtubeId(url) {
+  try {
+    const u = new URL(url.trim());
+    const h = u.hostname.replace(/^(www\.|m\.)/, '');
+    if (h === 'youtu.be') return u.pathname.slice(1).split('/')[0];
+    if (h === 'youtube.com' || h === 'music.youtube.com') {
+      if (u.searchParams.get('v')) return u.searchParams.get('v');
+      const m = u.pathname.match(/^\/(shorts|live|embed)\/([\w-]+)/);
+      if (m) return m[2];
+    }
+  } catch (e) {}
+  return null;
+}
+const safeUrl = url => /^https?:\/\//i.test(url || '') ? url.trim() : '';
+
+function videoView(p) {
+  const url = safeUrl(p.video);
+  if (!url) return '';
+  const id = youtubeId(url);
+  const open = `<a href="${esc(url)}" target="_blank" rel="noopener">${ic('ext')}アプリで開く</a>`;
+  if (!id) return `<div class="video"><a class="video-link" href="${esc(url)}" target="_blank" rel="noopener">${ic('video')}動画を開く</a></div>`;
+  return `<div class="video">
+    ${videoOpen ? `<div class="video-frame"><iframe src="https://www.youtube.com/embed/${esc(id)}?playsinline=1&rel=0" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" title="参考動画"></iframe></div>` : ''}
+    <div class="video-bar">${ic('video')}<span class="grow">参考動画</span>${open}<button data-action="video">${videoOpen ? '閉じる' : '表示する'}</button></div>
+  </div>`;
+}
+
+function patternView() {
+  const p = findP(view.id);
+  return `${subHeader(`<button class="btn-icon" data-action="home" aria-label="戻る">${ic('back')}</button>`, esc(p.name), `<button class="btn-icon" data-action="edit" aria-label="編集">${ic('pen')}</button>`)}
+  <main>
+    ${videoView(p)}
+    ${p.memo ? `<p class="memo">${esc(p.memo)}</p>` : ''}
+    <div id="pbody">${patternBody(p)}</div>
+  </main>`;
+}
+
+// しおり（編み途中の印）。pause が文字列なら途中、undefined なら付いていない
+const isPaused = st => typeof st.pause === 'string' && !st.done;
+function setPause(p, i) {
+  const st = p.steps[i];
+  if (isPaused(st)) { delete st.pause; toast('しおりを外しました'); }
+  else { p.steps.forEach(x => delete x.pause); st.pause = ''; toast('しおりをはさみました'); }   // しおりは1か所だけ
+  p.updatedAt = Date.now(); save(); update();
+}
+
+function timerView(p) {
+  const on = !!p.timer?.running, ms = elapsed(p);
+  return `<div class="timer ${on ? 'on' : ''}">
+    ${ic('clock').replace('class="ic"', 'class="ic clock"')}
+    <div class="tbox"><span class="t" id="timerTime">${clock(ms)}</span><span class="tsub">${on ? '編んでいます' : ms ? '合計の時間' : 'タイマー'}</span></div>
+    ${ms ? `<button class="btn-icon tedit" data-action="timeredit" aria-label="時間を直す">${ic('pen')}</button>` : ''}
+    <button class="btn ${on ? 'outline' : 'primary'} tbtn" data-action="timer">${on ? ic('pause') + '休憩' : ic('play') + (ms ? '再開' : '編みはじめる')}</button>
+  </div>`;
+}
+const durInputs = (min = 0) => `<div class="dur"><input type="number" id="dH" min="0" inputmode="numeric" value="${min ? Math.floor(min / 60) : ''}" placeholder="0">時間<input type="number" id="dM" min="0" max="59" inputmode="numeric" value="${min ? min % 60 : ''}" placeholder="0">分</div>`;
+const readDur = v => (parseInt(v.dH) || 0) * 60 + (parseInt(v.dM) || 0);
+
+function editTimer(p) {
+  const on = !!p.timer?.running;
+  sheet(`<div class="sheet-title">${ic('clock')}合計の時間を直す</div>
+    <label class="label">これまでに編んだ時間</label>${durInputs(Math.round(elapsed(p) / 60000))}
+    <div class="actions"><button class="btn danger" data-ans="zero">0にする</button><button class="btn primary" data-ans="save">保存</button></div>`);
+  modalResolve = v => {
+    if (!v) return;
+    const ms = v === 'zero' ? 0 : readDur(formVals) * 60000;
+    p.timer = { total: ms, running: on ? Date.now() : null };
+    p.updatedAt = Date.now(); save(); update();
+  };
+}
+// 何時間も動きっぱなしなら、戻ってきたときに聞く
+function checkLongTimer() {
+  const p = findP(view.id);
+  if (view.screen !== 'pattern' || !p?.timer?.running || modal.classList.contains('open')) return;
+  const ms = Date.now() - p.timer.running;
+  if (ms < 3 * 3600e3) return;
+  sheet(`<div class="sheet-title">${ic('clock')}タイマーが動いたままです</div>
+    <p class="ask-msg">「${esc(p.name)}」のタイマーを始めてから ${fmtMin(Math.floor(ms / 60000))} たっています。</p>
+    <label class="label">実際に編んでいたのは？</label>${durInputs(0)}
+    <div class="actions col"><button class="btn primary" data-ans="fix">入れた時間で止める</button><button class="btn outline" data-ans="all">全部数えて止める</button><button class="btn" data-ans="">このまま続ける</button></div>`);
+  modalResolve = v => {
+    if (!v) return;
+    stopTimer(p, v === 'fix' ? readDur(formVals) * 60000 : undefined);
+    p.updatedAt = Date.now(); save(); update();
+  };
+}
+
+function patternBody(p) {
+  const { done, total, pct } = progressOf(p);
+  const nextIdx = p.steps.findIndex(x => !x.done);
+  const steps = p.steps.map((st, i) => `
+    <li class="step ${st.done ? 'done' : ''} ${i === nextIdx ? 'next' : ''} ${isPaused(st) ? 'paused' : ''}" data-action="toggle" data-idx="${i}">
+      ${p.steps.some(x => x.row) ? `<span class="row-no">${esc(rowLabel(st.row))}</span>` : ''}
+      <span class="body"><span class="text">${esc(st.text)}</span>${isPaused(st) ? `<span class="pause-note">${ic('bookmark')}途中${st.pause ? '：' + esc(st.pause) : ''}</span>` : ''}</span>
+      ${!st.done && (i === nextIdx || isPaused(st)) ? `<button class="pause-btn ${isPaused(st) ? 'on' : ''}" data-action="pause" data-idx="${i}" aria-label="しおり（編み途中の印）">${ic('bookmark')}</button>` : ''}
+      <span class="check" role="checkbox" aria-checked="${!!st.done}">${st.done ? ic('check') : ''}</span>
+    </li>`).join('');
+  const recs = recordsOf(p.id).sort(byDateDesc);
+  return `
+    ${matView(p)}
+    ${timerView(p)}
+    <div class="progress"><div class="bar"><span style="width:${pct}%"></span></div><div>${done} / ${total}</div></div>
+    ${p.startedAt ? `<p class="started">${fmtDate(p.startedAt)} から ${daysBetween(p.startedAt, today())}日目・編んだ日 ${(p.workDays || []).length}日</p>` : ''}
+    <ol class="list">
+      ${steps}
+      <li class="quick-add"><input type="text" class="row-in" id="quickRow" value="${esc(nextRow(p.steps))}" inputmode="numeric" placeholder="-" aria-label="段数"><span class="dan">段目</span><input type="text" id="quickStep" placeholder="${total ? '次の工程' : '例：細編み'}" enterkeyhint="enter"><button class="btn-icon" data-action="quickadd" aria-label="追加">${ic('plus')}</button></li>
+    </ol>
+    <div class="actions">
+      <button class="btn primary" data-action="complete" ${total ? '' : 'disabled'}>${ic('award')}完成！記録する</button>
+      <button class="btn outline" data-action="reset" ${done ? '' : 'disabled'}>${ic('reset')}チェックを外す</button>
+    </div>
+    <div class="section-title">${ic('book')}この作品の記録（${recs.length}）</div>
+    ${recs.length ? `<ul class="list">${recs.map(r => recordItem(r)).join('')}</ul>` : '<p class="note">まだ記録はありません。</p>'}`;
+}
+
+// 工程チェック画面なら動画を残して下だけ更新。それ以外は全体を描き直す
+function update() {
+  const box = document.getElementById('pbody'), p = findP(view.id);
+  if (view.screen !== 'pattern' || !box || !p) { render(); return; }
+  const q = document.getElementById('quickStep');
+  const r = document.getElementById('quickRow');
+  const typed = q?.value || '', typedRow = r?.value, focus = document.activeElement?.id;
+  box.innerHTML = patternBody(p); hydratePhotos(box);
+  document.getElementById('quickStep').value = typed;
+  if (typedRow !== undefined) document.getElementById('quickRow').value = typedRow;
+  if (focus === 'quickStep' || focus === 'quickRow') document.getElementById(focus).focus();
+}
+
+function quickAdd() {
+  const p = findP(view.id), q = document.getElementById('quickStep'), r = document.getElementById('quickRow');
+  if (!p || !q.value.trim()) return;
+  const typedRow = r.value.trim().replace(/段目?$/, '');
+  const st = typedRow ? { row: typedRow, text: q.value.trim() } : parseStep(q.value);
+  p.steps.push({ id: uid(), ...st, done: false });
+  p.updatedAt = Date.now();
+  q.value = ''; r.value = nextRow(p.steps);   // 次の段数を自動で入れておく
+  save(); update();
+  document.getElementById('quickStep').focus();
+}
+
+function recordItem(r, showName = false) {
+  const name = findP(r.patternId)?.name || r.patternName;
+  const days = daysLabel(r);
+  return `<li class="record" data-action="viewrec" data-id="${r.id}">
+    ${r.photo ? `<img class="thumb" data-photo="${esc(r.photo)}" alt="">` : ''}
+    <div class="rbody">
+      <div class="record-head"><span class="date">${fmtDate(r.date)}</span>${showName ? `<span class="rname">${esc(name)}</span>` : ''}${days ? `<span class="badge">${days}</span>` : ''}</div>
+      ${yarnsOf(r).length ? `<div class="yarn">${ic('yarn')}${esc(yarnsOf(r).map(y => y.name).join('・'))}</div>` : ''}
+      ${r.hook ? `<div class="yarn">${ic('hook')}${esc(r.hook)}</div>` : ''}
+      ${r.cast ? `<div class="yarn">${ic('list')}作り目 ${esc(castLabel(r.cast))}</div>` : ''}
+      ${r.memo ? `<div class="rmemo">${esc(r.memo)}</div>` : ''}
+    </div>
+    <span class="chev">${ic('chev')}</span>
+  </li>`;
+}
+
+/* 作品の作成・編集 */
+function editView() {
+  const d = draft, n = d.steps.length;
+  const rows = d.steps.map((st, i) => `
+    <li class="edit-step">
+      <input type="text" class="row-in" data-field="row" data-idx="${i}" value="${esc(st.row || '')}" inputmode="numeric" placeholder="-" aria-label="段数"><span class="dan">段目</span>
+      <textarea rows="1" data-field="step" data-idx="${i}">${esc(st.text)}</textarea>
+      <div class="step-btns">
+        <button class="mini" data-action="up" data-idx="${i}" ${i === 0 ? 'disabled' : ''} aria-label="上へ">${ic('up')}</button>
+        <button class="mini" data-action="down" data-idx="${i}" ${i === n - 1 ? 'disabled' : ''} aria-label="下へ">${ic('down')}</button>
+        <button class="mini" data-action="delstep" data-idx="${i}" aria-label="削除">${ic('x')}</button>
+      </div>
+    </li>`).join('');
+  return `${`<header class="header"><h1 class="sub">${d.isNew ? '新しい作品' : '編集'}</h1><button class="hbtn" data-action="cancel">キャンセル</button><button class="hbtn primary" data-action="save">保存</button></header>`}
+  <main>
+    <label class="label">作品名</label>
+    <input type="text" data-field="name" value="${esc(d.name)}" placeholder="例：モチーフのコースター">
+    <label class="label">参考動画のURL</label>
+    <input type="text" data-field="video" value="${esc(d.video || '')}" placeholder="https://youtu.be/…" inputmode="url" autocapitalize="off">
+    <label class="label">メモ</label>
+    <textarea rows="2" data-field="memo" placeholder="例：仕上がりのサイズ、作り目の数など">${esc(d.memo)}</textarea>
+    <label class="label">工程（${n}）${d.isNew ? '　※あとからチェック画面でも追加できます' : ''}</label>
+    <ol class="edit-steps">${rows}</ol>
+    <div class="add-row"><input type="text" id="newStep" placeholder="工程を追加" enterkeyhint="done"><button class="btn primary" data-action="addstep">${ic('plus')}追加</button></div>
+    <details class="bulk"><summary>まとめて追加（1行＝1工程）</summary>
+      <textarea id="bulk" rows="5" placeholder="1行に1工程ずつ。&#10;例）1段目：細編み&#10;　　2段目：長編み"></textarea>
+      <button class="btn outline" data-action="bulkadd">${ic('plus')}まとめて追加</button>
+    </details>
+  </main>`;
+}
+
+/* 記録一覧 */
+function recordsView() {
+  const recs = [...state.records].sort(byDateDesc);
+  return `${header('完成記録')}
+  <main>
+    ${recs.length ? `<p class="note">これまでに ${recs.length} 個完成しました</p><ul class="list">${recs.map(r => recordItem(r, true)).join('')}</ul>`
+                  : `<p class="empty">${bigIc('book')}まだ記録はありません。</p>`}
+  </main>`;
+}
+
+/* 設定（クラウド保存） */
+function settingsView() {
+  const count = `<p class="note">作品 ${state.patterns.length} 件 ／ 記録 ${state.records.length} 件</p>`;
+  if (!sync.token) {
+    return `${header('設定')}
+    <main><div class="panel">
+      <div class="section-title" style="margin-top:0">${ic('cloud')}クラウド保存（GitHub Gist）</div>
+      <p>変更のたびに、非公開のGistへ自動で保存します。キャッシュを消したり機種変更したりしても、トークンを入れ直せば元に戻せます。</p>
+      <ol>
+        <li>GitHubの Settings → Developer settings → Personal access tokens を開く</li>
+        <li>Fine-grained token なら「Gists」を Read and write に、Classic token なら「gist」にチェックして作成</li>
+        <li>できたトークンを下に貼り付ける</li>
+      </ol>
+      <label class="label">GitHubトークン</label>
+      <input type="password" id="token" autocomplete="off" placeholder="github_pat_… / ghp_…">
+      <button class="btn primary block" data-action="connect">${ic('cloud')}クラウド保存をはじめる</button>
+      ${syncError ? `<div class="status error">${ic('cloudOff')}${esc(syncError)}</div>` : ''}
+    </div>${count}</main>`;
+  }
+  const st = {
+    syncing: `<div class="status">${ic('cloud')}保存しています…</div>`,
+    ok:      `<div class="status ok">${ic('cloud')}クラウドに保存済みです</div>`,
+    error:   `<div class="status error">${ic('cloudOff')}${esc(syncError)}</div>`,
+  }[syncStatus] || '';
+  return `${header('設定')}
+  <main><div class="panel">
+    <div class="section-title" style="margin-top:0">${ic('cloud')}クラウド保存（GitHub Gist）</div>
+    ${st}
+    <p>変更は自動で保存されます。ほかの端末でも同じトークンを入れると、同じデータを使えます。</p>
+    <button class="btn outline block" data-action="syncnow">${ic('reset')}今すぐ同期する</button>
+    <button class="btn danger block" data-action="disconnect">${ic('cloudOff')}クラウド保存をやめる</button>
+  </div>${count}</main>`;
+}
+
+/* ===== 完成モーダル ===== */
+const modal = document.getElementById('modal');
+function recordForm(r, fromRun = false) {
+  const d = daysBetween(r.start, r.date);
+  const photo = `<div class="photo-box" id="photoBox" data-id="${esc(r.photo || '')}">${photoBox(r.photo)}</div>`;
+  // 完成のとき：チェック画面で入れた材料をそのまま使う（入れていなければここで入力）
+  const mat = fromRun && matText(r)
+    ? `<div id="matBox"><div class="mat-sum"><button class="sum-edit" data-action="matedit">直す</button><b>今回の材料（チェック画面で入れた内容）</b>${esc(matText(r))}</div>
+       <input type="hidden" id="mYarns" value="${esc(JSON.stringify(yarnsOf(r)))}"><input type="hidden" id="mHook" value="${esc(r.hook || '')}"><input type="hidden" id="mCast" value="${esc(r.cast || '')}"></div>`
+    : `<div id="matBox">${matFields('m', r)}</div>`;
+  return `${photo}
+    <div class="dates">
+      <div><label class="label">始めた日</label><input type="date" id="mStart" value="${esc(r.start || '')}"></div>
+      <div><label class="label">完成日</label><input type="date" id="mDate" value="${esc(r.date || today())}"></div>
+    </div>
+    <div class="days" id="mDays">${d ? `期間：${d}日` : ''}</div>
+    <div class="dates">
+      <div style="flex:1.6"><label class="label">編んだ時間</label><div class="dur"><input type="number" id="mH" min="0" inputmode="numeric" value="${r.timeMin ? Math.floor(r.timeMin / 60) : ''}" placeholder="0">時間<input type="number" id="mM" min="0" max="59" inputmode="numeric" value="${r.timeMin ? r.timeMin % 60 : ''}" placeholder="0">分</div></div>
+      <div><label class="label">編んだ日</label><div class="dur"><input type="number" id="mWork" min="0" inputmode="numeric" value="${r.workDays || ''}" placeholder="-">日</div></div>
+    </div>
+    ${mat}
+    <label class="label">メモ</label><textarea id="mMemo" rows="3" placeholder="気づいたこと、次に気をつけることなど">${esc(r.memo || '')}</textarea>`;
+}
+const readForm = () => ({
+  start: document.getElementById('mStart').value,
+  date: document.getElementById('mDate').value || today(),
+  ...readMat(inputVals(), 'm'),
+  memo: document.getElementById('mMemo').value.trim(),
+  timeMin: (parseInt(document.getElementById('mH').value) || 0) * 60 + (parseInt(document.getElementById('mM').value) || 0) || null,
+  workDays: parseInt(document.getElementById('mWork').value) || null,
+});
+
+function openComplete(p) {
+  pendingPhoto = undefined;
+  const { done, total } = progressOf(p);
+  const warn = done < total ? `<p class="warn">未チェックの工程が ${total - done} 個あります。このまま記録しますか？</p>` : '';
+  modal.innerHTML = `<div class="sheet">
+    <div class="sheet-title">${ic('award')}完成おめでとうございます</div>${warn}
+    ${recordForm({ ...(p.run || {}), start: p.startedAt || '', date: today(), timeMin: Math.round(elapsed(p) / 60000), workDays: (p.workDays || []).length }, true)}
+    <label class="checkline"><input type="checkbox" id="mReset" checked> チェックをすべて外して、また作れる状態にする</label>
+    <div class="actions"><button class="btn" data-action="modal-close">やめる</button><button class="btn primary" data-action="modal-save">記録する</button></div>
+  </div>`;
+  modal.classList.add('open'); hydratePhotos(modal);
+}
+
+// 記録の確認・編集
+function openRecord(id) {
+  const r = state.records.find(x => x.id === id);
+  if (!r) return;
+  pendingPhoto = undefined;
+  const name = findP(r.patternId)?.name || r.patternName;
+  modal.innerHTML = `<div class="sheet">
+    <div class="sheet-title">${ic('book')}完成の記録<button class="sheet-close" data-action="modal-close" aria-label="閉じる">${ic('x')}</button></div>
+    <p class="sheet-sub">${esc(name)}</p>
+    ${recordForm(r)}
+    <div class="actions"><button class="btn danger" data-action="delrec" data-id="${r.id}">${ic('trash')}削除</button><button class="btn primary" data-action="saverec" data-id="${r.id}">保存</button></div>
+  </div>`;
+  modal.classList.add('open'); hydratePhotos(modal);
+}
+async function saveRecord(id) {
+  const r = state.records.find(x => x.id === id);
+  if (!r) return;
+  const f = readForm();
+  f.photo = await commitPhoto(r.photo);
+  Object.assign(r, f);
+  save(); closeModal(); update(); toast('記録を保存しました');
+}
+let modalResolve = null, formVals = {};
+function closeModal() { modal.classList.remove('open'); modal.innerHTML = ''; const r = modalResolve; modalResolve = null; r?.(null); }
+function sheet(html) { modal.innerHTML = `<div class="sheet">${html}</div>`; modal.classList.add('open'); }
+function answer(v) { const r = modalResolve; modalResolve = null; modal.classList.remove('open'); modal.innerHTML = ''; r?.(v); }
+// はい／いいえ。OKなら true
+function askConfirm(msg, { ok = 'OK', cancel = 'やめる', danger = false, sub = '' } = {}) {
+  return new Promise(res => {
+    sheet(`<p class="ask-msg">${esc(msg)}</p>${sub ? `<p class="ask-sub">${esc(sub)}</p>` : ''}
+      <div class="actions"><button class="btn" data-ans="0">${esc(cancel)}</button><button class="btn ${danger ? 'danger-fill' : 'primary'}" data-ans="1">${esc(ok)}</button></div>`);
+    modalResolve = v => res(v === '1');
+  });
+}
+// 2択（どちらでもない＝閉じた場合は null）
+function askChoice(msg, a, b) {
+  return new Promise(res => {
+    sheet(`<p class="ask-msg">${esc(msg)}</p>
+      <div class="actions col"><button class="btn primary" data-ans="a">${esc(a)}</button><button class="btn outline" data-ans="b">${esc(b)}</button><button class="btn" data-ans="">やめる</button></div>`);
+    modalResolve = v => res(v || null);
+  });
+}
+async function saveComplete() {
+  const p = findP(view.id);
+  const f = readForm();
+  f.photo = await commitPhoto(undefined);
+  state.records.push({ id: uid(), patternId: p.id, patternName: p.name, ...f, createdAt: Date.now() });
+  stopTimer(p);
+  if (document.getElementById('mReset').checked) { p.steps.forEach(s => { s.done = false; delete s.pause; }); clearRun(p); }
+  save(); closeModal(); update(); toast('記録しました');
+}
+
+/* ===== 編集の操作 ===== */
+function addSteps(lines, keepFocus) {
+  const add = lines.map(s => s.trim()).filter(Boolean);
+  if (!add.length) return;
+  add.forEach(t => draft.steps.push({ id: uid(), ...parseStep(t), done: false }));
+  render();
+  if (keepFocus) document.getElementById('newStep')?.focus();
+}
+function swap(i, j) {
+  const s = draft.steps;
+  if (j < 0 || j >= s.length) return;
+  [s[i], s[j]] = [s[j], s[i]]; render();
+}
+function saveDraft() {
+  const name = draft.name.trim();
+  if (!name) { toast('作品名を入力してください'); return; }
+  const pending = document.getElementById('newStep')?.value.trim();   // 「追加」を押し忘れた入力も拾う
+  if (pending) draft.steps.push({ id: uid(), ...parseStep(pending), done: false });
+  const steps = draft.steps.map(s => ({ ...s, row: String(s.row || '').trim().replace(/段目?$/, ''), text: s.text.trim() })).filter(s => s.text);
+  const data = { ...(findP(draft.id) || {}), id: draft.id, name, video: (draft.video || '').trim(), memo: draft.memo.trim(), steps, createdAt: draft.createdAt || Date.now(), updatedAt: Date.now() };
+  const i = state.patterns.findIndex(p => p.id === data.id);
+  if (i >= 0) state.patterns[i] = data; else state.patterns.unshift(data);
+  save(); draft = null; go('pattern', data.id); toast('保存しました');
+}
+
+/* ===== イベント ===== */
+document.addEventListener('click', e => {
+  if (e.target === modal) { closeModal(); return; }
+  const ans = e.target.closest('[data-ans]');
+  if (ans) {
+    formVals = {}; modal.querySelectorAll('input,textarea').forEach(i => { if (i.id) formVals[i.id] = i.value; });
+    answer(ans.dataset.ans); return;
+  }
+  const el = e.target.closest('[data-action]');
+  if (!el || el.disabled) return;
+  const a = el.dataset.action, idx = +el.dataset.idx, id = el.dataset.id;
+  const p = findP(view.id);
+
+  switch (a) {
+    case 'home': go('home'); break;
+    case 'tab': go(el.dataset.tab); break;
+    case 'open': videoOpen = true; go('pattern', id); break;
+    case 'new': draft = { id: uid(), name: '', video: '', memo: '', steps: [], isNew: true }; go('edit'); break;
+    case 'edit': draft = { ...structuredClone(p), isNew: false }; go('edit', p.id); break;
+
+    case 'toggle':
+      p.steps[idx].done = !p.steps[idx].done;
+      if (p.steps[idx].done) delete p.steps[idx].pause;
+      if (p.steps[idx].done) markDay(p);   // チェックした日を「編んだ日」に（最初の日が「始めた日」）
+      p.updatedAt = Date.now(); save(); update();
+      if (p.steps.every(s => s.done)) toast('全工程チェック完了！');
+      break;
+    case 'reset':
+      askConfirm('チェックをすべて外しますか？', { ok: '外す', sub: p.startedAt || p.timer ? 'タイマーと編んだ日もリセットされます' : '' }).then(ok => { if (ok) { p.steps.forEach(s => { s.done = false; delete s.pause; }); clearRun(p); save(); update(); } });
+      break;
+    case 'complete': openComplete(p); break;
+    case 'modal-close': closeModal(); break;
+    case 'modal-save': saveComplete(); break;
+    case 'viewrec': openRecord(id); break;
+    case 'saverec': saveRecord(id); break;
+    case 'photodel': pendingPhoto = null; refreshPhotoBox(); break;
+    case 'delrec':
+      askConfirm('この記録を削除しますか？', { ok: '削除', danger: true }).then(ok => { if (ok) { delPhoto(state.records.find(r => r.id === id)?.photo); state.records = state.records.filter(r => r.id !== id); save(); update(); toast('削除しました'); } else openRecord(id); });
+      break;
+
+    case 'pause': setPause(p, idx); break;
+    case 'timer':
+      if (p.timer?.running) { stopTimer(p); toast('休憩中。おつかれさまです'); }
+      else {
+        startTimer(p);
+        // 初めてのときだけ通知の許可を聞く
+        if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().then(r => { if (r === 'granted') syncTimerNote(); }).catch(() => {});
+      }
+      p.updatedAt = Date.now(); save(); update(); break;
+    case 'timeredit': editTimer(p); break;
+    case 'mat': editMat(p); break;
+    case 'fillprev': {
+      const r = prevCombos(p)[idx];
+      if (r) modal.querySelector('.matf').outerHTML = matFields('r', r);
+      break;
+    }
+    case 'swatch': applyColor(el.closest('.swatches').dataset.px, el.dataset.hex || '', el.dataset.name); break;
+    case 'chipsel': { const px = el.dataset.px, c = document.getElementById(px + 'Chips'); const again = c.dataset.explicit === '1' && +c.dataset.sel === idx; setYs(px, getYs(px), again ? firstSel(getYs(px)) : idx, !again); break; }
+    case 'chipdel': { const px = el.dataset.px, ys = getYs(px); ys.splice(idx, 1); setYs(px, ys, firstSel(ys)); break; }
+    case 'matedit': expandMat(); break;
+    case 'quickadd': quickAdd(); break;
+    case 'video': videoOpen = !videoOpen; render(); break;
+    case 'addstep': addSteps([document.getElementById('newStep').value], true); break;
+    case 'bulkadd': addSteps(document.getElementById('bulk').value.split('\n'), false); break;
+    case 'up': swap(idx, idx - 1); break;
+    case 'down': swap(idx, idx + 1); break;
+    case 'delstep': draft.steps.splice(idx, 1); render(); break;
+    case 'save': saveDraft(); break;
+    case 'cancel': {
+      const back = draft.isNew ? ['home', null] : ['pattern', draft.id];
+      draft = null; go(...back); break;
+    }
+    case 'delpattern':
+      { const w = findP(id); if (!w) break;
+        askConfirm(`「${w.name}」を削除しますか？`, { ok: '削除', danger: true, sub: '完成記録は残ります' }).then(ok => {
+          if (ok) { state.patterns = state.patterns.filter(x => x.id !== w.id); save(); render(); toast('削除しました'); }
+        }); }
+      break;
+
+    case 'connect': {
+      const t = document.getElementById('token').value.trim();
+      if (!t) { toast('トークンを入力してください'); return; }
+      connect(t); break;
+    }
+    case 'syncnow': if (dirty) flush(); else pull(); break;
+    case 'disconnect':
+      askConfirm('クラウド保存をやめますか？', { ok: 'やめる', cancel: '続ける', danger: true, sub: 'クラウドのデータは消えません。トークンを入れ直せば再開できます' }).then(ok => { if (ok) disconnect(); });
+      break;
+  }
+});
+
+document.addEventListener('input', e => {
+  if (e.target.type === 'color' && e.target.id.endsWith('Pick')) applyColor(e.target.id.slice(0, -4), e.target.value);
+  if (e.target.classList.contains('yarn-in') && !e.isComposing && /[ 　]/.test(e.target.value)) {
+    const parts = e.target.value.split(/[ 　]+/), rest = parts.pop();
+    parts.filter(Boolean).forEach(t => addYarn(e.target.dataset.px, t));
+    e.target.value = rest;
+  }
+  if (e.target.id === 'mStart' || e.target.id === 'mDate') {
+    const d = daysBetween(document.getElementById('mStart').value, document.getElementById('mDate').value);
+    document.getElementById('mDays').textContent = d ? `期間：${d}日` : '';
+  }
+  const f = e.target.dataset.field;
+  if (!f || !draft) return;
+  if (f === 'step') draft.steps[+e.target.dataset.idx].text = e.target.value;
+  else if (f === 'row') draft.steps[+e.target.dataset.idx].row = e.target.value;
+  else draft[f] = e.target.value;
+  if (e.target.tagName === 'TEXTAREA') autoGrow(e.target);
+});
+
+document.addEventListener('keydown', e => {
+  // 日本語入力の変換確定Enterでは追加しない
+    if (e.target.classList?.contains('yarn-in') && e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); flushYarnIn(e.target.dataset.px); return; }
+  if (e.target.id === 'quickRow' && e.key === 'Enter' && !e.isComposing) { e.preventDefault(); document.getElementById('quickStep').focus(); return; }
+  if (e.target.id === 'quickStep' && e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
+    e.preventDefault(); quickAdd(); return;
+  }
+  if (e.target.id === 'newStep' && e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
+    e.preventDefault(); addSteps([e.target.value], true);
+  }
+});
+
+document.addEventListener('change', async e => {
+  if (e.target.classList?.contains('hook-in')) e.target.value = normHook(e.target.value);
+  if (e.target.id === 'photoFile' && e.target.files[0]) {
+    try { pendingPhoto = await shrink(e.target.files[0]); refreshPhotoBox(); }
+    catch (err) { toast('写真を読み込めませんでした'); }
+  }
+});
+
+// 日本語入力で確定した文字にスペースが入っていたときも糸にする
+document.addEventListener('compositionend', e => {
+  if (!e.target.classList?.contains('yarn-in') || !/[ 　]/.test(e.target.value)) return;
+  const parts = e.target.value.split(/[ 　]+/), rest = parts.pop();
+  parts.filter(Boolean).forEach(t => addYarn(e.target.dataset.px, t));
+  e.target.value = rest;
+});
+
+/* ===== 起動 ===== */
+(async () => {
+  if (!localStorage.getItem(KEY) && localStorage.getItem(OLD_KEY)) store();   // 旧名から引き継ぎ
+  // localStorageが空なら IndexedDB の控えから戻す
+  if (!sync.token) { const c = await idbGet('sync'); if (c?.token) { sync = c; saveSync(); syncStatus = 'syncing'; } }
+  if (isEmpty(state)) { const d = await idbGet('state'); if (d) { state = normalize(d); store(); } }
+  navigator.storage?.persist?.();   // ブラウザに勝手に消されにくくする
+  render();
+  // 通知から開いたとき
+  const q = new URLSearchParams(location.search);
+  if (q.get('stop')) remoteStop(q.get('stop'), +q.get('at'));
+  if (q.get('open') && findP(q.get('open'))) go('pattern', q.get('open'));
+  if (q.toString()) history.replaceState(null, '', location.pathname);
+  pull();
+  syncTimerNote();
+})();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
