@@ -99,6 +99,7 @@ main{max-width:640px;margin:0 auto;padding:14px 16px calc(env(safe-area-inset-bo
 .step .body .text{display:block}
 .cnt-pill{flex:none;display:inline-flex;align-items:center;gap:2px;padding:3px 10px;border-radius:14px;background:var(--primary-pale);color:var(--primary);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .cnt-pill .minus{border:none;background:none;color:var(--primary);width:22px;height:22px;margin-left:-6px;display:grid;place-items:center;padding:0;font-size:16px;line-height:1}
+.cnt-next{display:block;font-size:11px;color:var(--primary);font-weight:600;margin-top:2px}
 .cnt-bar{display:block;height:3px;border-radius:2px;background:var(--surface2);margin-top:5px;overflow:hidden;max-width:160px}
 .cnt-bar span{display:block;height:100%;background:var(--primary)}
 .step .tip{display:flex;align-items:flex-start;gap:4px;margin-top:3px;font-size:12px;color:var(--text2);white-space:pre-wrap;word-break:break-word}
@@ -556,6 +557,16 @@ function splitCount(text) {
   if (!m || !m[1].trim()) return { text: String(text).trim() };
   const n = parseInt(m[2].replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)));
   return n >= 2 ? { text: m[1].trim(), count: Math.min(n, 99) } : { text: m[1].trim() };
+}
+// 段数の書き方をそろえる：「1-10」「1~10」「1ー10」→「1〜10」、「段目」は取る
+const normRow = r => String(r || '').trim().replace(/段目?$/, '').replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/\s*[~\-ー－〜]\s*/, '〜');
+const rangeLen = r => { const m = String(r || '').match(/^(\d+)〜(\d+)$/); return m && +m[2] > +m[1] ? +m[2] - +m[1] + 1 : 0; };
+// 「1〜10段目」のように範囲なら、1段編むごとにチェック（10段ぶん）
+function autoRange(st) {
+  const len = rangeLen(st.row);
+  if (len > 1 && !(st.count > 1)) { st.count = len; st.n = st.n || 0; st.byRow = true; }
+  if (!len && st.byRow) { delete st.count; delete st.n; delete st.byRow; }
+  return st;
 }
 function withCount(st) { const c = splitCount(st.text); return c.count ? { ...st, text: c.text, count: c.count, n: 0 } : st; }
 function parseStep(text) {
@@ -1106,7 +1117,7 @@ function openStepEdit(i) {
   if (!st) return;
   sheet(`<div class="sheet-title">${ic('pen')}工程を直す<button class="sheet-close" data-action="modal-close" aria-label="閉じる">${ic('x')}</button></div>
     <div class="add-row" style="align-items:center">
-      <input type="text" id="sRow" class="row-in" value="${esc(st.row || '')}" inputmode="numeric" placeholder="-" style="flex:none;width:4em;text-align:center" aria-label="段数"><span class="dan" id="sDan">${danLabel(st.row || '')}</span>
+      <input type="text" id="sRow" class="row-in" value="${esc(st.row || '')}" inputmode="tel" placeholder="-" style="flex:none;width:4em;text-align:center" aria-label="段数"><span class="dan" id="sDan">${danLabel(st.row || '')}</span>
       <input type="text" id="sText" value="${esc(st.text)}" placeholder="例：細編み">
     </div>
     <label class="label">チェックの回数（1なら普通のチェック）</label>
@@ -1119,10 +1130,13 @@ function openStepEdit(i) {
     if (v === 'save') {
       const text = (formVals.sText || '').trim();
       if (!text) { toast('工程の内容を入れてください'); return; }
-      st.row = (formVals.sRow || '').trim().replace(/段目?$/, '');
+      st.row = normRow(formVals.sRow);
       const c = splitCount(text);
       st.text = c.text;
-      const cnt = c.count || Math.max(1, Math.min(99, parseInt(formVals.sCount) || 1));
+      const len = rangeLen(st.row);
+      let cnt = c.count || Math.max(1, Math.min(99, parseInt(formVals.sCount) || 1));
+      if (len > 1 && cnt <= 1) cnt = len;   // 範囲の段数なら、段の数だけ数える
+      if (len > 1 && cnt === len) st.byRow = true; else delete st.byRow;
       if (cnt > 1) { st.count = cnt; st.n = Math.min(st.n || 0, cnt); st.done = st.n >= cnt; }
       else { if (st.count) st.done = (st.n || 0) >= st.count && !!st.done; delete st.count; delete st.n; }
       const note = (formVals.sNote || '').trim();
@@ -1160,9 +1174,9 @@ function patternBody(p) {
   const steps = p.steps.map((st, i) => `
     <li class="step ${st.done ? 'done' : ''} ${i === nextIdx ? 'next' : ''} ${isPaused(st) ? 'paused' : ''}" data-action="toggle" data-idx="${i}">
       ${p.steps.some(x => x.row) ? `<span class="row-no">${esc(rowLabel(st.row))}</span>` : ''}
-      <span class="body"><span class="text">${esc(st.text)}</span>${st.count > 1 && !st.done ? `<span class="cnt-bar"><span style="width:${Math.round((st.n || 0) / st.count * 100)}%"></span></span>` : ''}${st.note ? `<span class="tip">${ic('bulb')}<span>${esc(st.note)}</span></span>` : ''}${isPaused(st) ? `<span class="pause-note">${ic('bookmark')}途中${st.pause ? '：' + esc(st.pause) : ''}</span>` : ''}</span>
+      <span class="body"><span class="text">${esc(st.text)}</span>${st.count > 1 && !st.done ? `<span class="cnt-bar"><span style="width:${Math.round((st.n || 0) / st.count * 100)}%"></span></span>${st.byRow ? `<span class="cnt-next">次は${+String(st.row).split('〜')[0] + (st.n || 0)}段目</span>` : ''}` : ''}${st.note ? `<span class="tip">${ic('bulb')}<span>${esc(st.note)}</span></span>` : ''}${isPaused(st) ? `<span class="pause-note">${ic('bookmark')}途中${st.pause ? '：' + esc(st.pause) : ''}</span>` : ''}</span>
       ${!st.done && (i === nextIdx || isPaused(st)) ? `<button class="pause-btn ${isPaused(st) ? 'on' : ''}" data-action="pause" data-idx="${i}" aria-label="しおり（編み途中の印）">${ic('bookmark')}</button>` : ''}
-      ${st.count > 1 ? `<span class="cnt-pill">${(st.n || 0) > 0 && !st.done ? `<button class="minus" data-action="cntdown" data-idx="${i}" aria-label="1つ戻す">−</button>` : ''}${st.n || 0} / ${st.count}</span>` : ''}
+      ${st.count > 1 ? `<span class="cnt-pill">${(st.n || 0) > 0 && !st.done ? `<button class="minus" data-action="cntdown" data-idx="${i}" aria-label="1つ戻す">−</button>` : ''}${st.n || 0} / ${st.count}${st.byRow ? '段' : ''}</span>` : ''}
       <span class="check" role="checkbox" aria-checked="${!!st.done}">${st.done ? ic('check') : ''}</span>
     </li>`).join('');
   const recs = recordsOf(p.id).sort(byDateDesc);
@@ -1173,7 +1187,7 @@ function patternBody(p) {
     ${p.startedAt ? `<p class="started" data-action="startedit" role="button">${fmtDate(p.startedAt)} から ${daysBetween(p.startedAt, today())}日目・編んだ日 ${(p.workDays || []).length}日${ic('pen')}</p>` : ''}
     <ol class="list">
       ${steps}
-      <li class="quick-add"><input type="text" class="row-in" id="quickRow" value="${esc(nextRow(p.steps))}" inputmode="numeric" placeholder="-" aria-label="段数"><span class="dan" id="quickDan">${danLabel(nextRow(p.steps))}</span><input type="text" id="quickStep" placeholder="${total ? '次の工程（×4で4回）' : '例：鎖編み30目'}" enterkeyhint="enter"><button class="btn-icon" data-action="quickadd" aria-label="追加">${ic('plus')}</button></li>
+      <li class="quick-add"><input type="text" class="row-in" id="quickRow" value="${esc(nextRow(p.steps))}" inputmode="tel" placeholder="-" aria-label="段数（1-10で範囲）"><span class="dan" id="quickDan">${danLabel(nextRow(p.steps))}</span><input type="text" id="quickStep" placeholder="${total ? '次の工程（×4で4回）' : '例：鎖編み30目'}" enterkeyhint="enter"><button class="btn-icon" data-action="quickadd" aria-label="追加">${ic('plus')}</button></li>
     </ol>
     ${total ? '<p class="list-hint">工程を長押しすると、直したりワンポイントを付けたりできます</p>' : ''}
     <div class="actions">
@@ -1200,9 +1214,9 @@ function update() {
 function quickAdd() {
   const p = findP(view.id), q = document.getElementById('quickStep'), r = document.getElementById('quickRow');
   if (!p || !q.value.trim()) return;
-  const typedRow = r.value.trim().replace(/段目?$/, '');
+  const typedRow = normRow(r.value);
   const ps = parseStep(q.value);   // 「作り目：〜」「3段目：〜」と書いてあれば、そちらを優先
-  const st = ps.row ? ps : { ...ps, row: typedRow };
+  const st = autoRange(ps.row ? ps : { ...ps, row: typedRow });
   p.steps.push({ id: uid(), ...st, done: false });
   p.updatedAt = Date.now();
   q.value = ''; r.value = nextRow(p.steps);   // 次の段数を自動で入れておく
@@ -1232,7 +1246,7 @@ function editView() {
   const d = draft, n = d.steps.length;
   const rows = d.steps.map((st, i) => `
     <li class="edit-step">
-      <input type="text" class="row-in" data-field="row" data-idx="${i}" value="${esc(st.row || '')}" inputmode="numeric" placeholder="-" aria-label="段数"><span class="dan">${danLabel(st.row || '')}</span>
+      <input type="text" class="row-in" data-field="row" data-idx="${i}" value="${esc(st.row || '')}" inputmode="tel" placeholder="-" aria-label="段数（1-10で範囲）"><span class="dan">${danLabel(st.row || '')}</span>
       <textarea rows="1" data-field="step" data-idx="${i}">${esc(st.text)}</textarea>
       <div class="step-btns">
         <button class="mini" data-action="up" data-idx="${i}" ${i === 0 ? 'disabled' : ''} aria-label="上へ">${ic('up')}</button>
@@ -1250,7 +1264,7 @@ function editView() {
     <textarea rows="2" data-field="memo" placeholder="例：参考にした本、気をつけるところなど">${esc(d.memo)}</textarea>
     <label class="label">工程（${n}）${d.isNew ? '　※あとからチェック画面でも追加できます' : ''}</label>
     <ol class="edit-steps">${rows}</ol>
-    <div class="add-row edit-add"><input type="text" class="row-in" id="newRow" value="${esc(nextRow(d.steps))}" inputmode="numeric" placeholder="-" aria-label="段数"><span class="dan" id="newDan">${danLabel(nextRow(d.steps))}</span><input type="text" id="newStep" placeholder="工程を追加" enterkeyhint="done"><button class="btn primary" data-action="addstep">${ic('plus')}追加</button></div>
+    <div class="add-row edit-add"><input type="text" class="row-in" id="newRow" value="${esc(nextRow(d.steps))}" inputmode="tel" placeholder="-" aria-label="段数（1-10で範囲）"><span class="dan" id="newDan">${danLabel(nextRow(d.steps))}</span><input type="text" id="newStep" placeholder="工程を追加" enterkeyhint="done"><button class="btn primary" data-action="addstep">${ic('plus')}追加</button></div>
     <details class="bulk"><summary>まとめて追加（1行＝1工程）</summary>
       <textarea id="bulk" rows="5" placeholder="1行に1工程ずつ。&#10;例）1段目：細編み&#10;　　2段目：長編み"></textarea>
       <button class="btn outline" data-action="bulkadd">${ic('plus')}まとめて追加</button>
@@ -1419,7 +1433,8 @@ function addSteps(lines, keepFocus, rowVal) {
   if (!add.length) return;
   add.forEach(t => {
     const ps = parseStep(t);
-    if (!ps.row) ps.row = rowVal !== undefined ? rowVal.trim().replace(/段目?$/, '') : nextRow(draft.steps);
+    if (!ps.row) ps.row = rowVal !== undefined ? normRow(rowVal) : nextRow(draft.steps);
+    autoRange(ps);
     draft.steps.push({ id: uid(), ...ps, done: false });
   });
   render();
@@ -1434,8 +1449,8 @@ function saveDraft() {
   const name = draft.name.trim();
   if (!name) { toast('作品名を入力してください'); return; }
   const pending = document.getElementById('newStep')?.value.trim();   // 「追加」を押し忘れた入力も拾う
-  if (pending) { const ps = parseStep(pending); if (!ps.row) ps.row = (document.getElementById('newRow')?.value || '').trim(); draft.steps.push({ id: uid(), ...ps, done: false }); }
-  const steps = draft.steps.map(s => { const c = splitCount(s.text); const o = { ...s, row: String(s.row || '').trim().replace(/段目?$/, ''), text: c.text }; if (c.count) { o.count = c.count; o.n = Math.min(o.n || 0, c.count); } return o; }).filter(s => s.text);
+  if (pending) { const ps = parseStep(pending); if (!ps.row) ps.row = normRow(document.getElementById('newRow')?.value); draft.steps.push(autoRange({ id: uid(), ...ps, done: false })); }
+  const steps = draft.steps.map(s => { const c = splitCount(s.text); const o = { ...s, row: normRow(s.row), text: c.text }; if (c.count) { o.count = c.count; o.n = Math.min(o.n || 0, c.count); delete o.byRow; } return autoRange(o); }).filter(s => s.text);
   const data = { ...(findP(draft.id) || {}), id: draft.id, name, video: (draft.video || '').trim(), memo: draft.memo.trim(), steps, createdAt: draft.createdAt || Date.now(), updatedAt: Date.now() };
   const i = state.patterns.findIndex(p => p.id === data.id);
   if (i >= 0) state.patterns[i] = data; else state.patterns.unshift(data);
