@@ -115,7 +115,7 @@ main{max-width:640px;margin:0 auto;padding:14px 16px calc(env(safe-area-inset-bo
 .pause-btn svg.ic{width:19px;height:19px}
 .quick-add{display:flex;align-items:center;gap:8px;padding:10px 10px 10px 14px;background:var(--surface2)}
 .quick-add .row-in{flex:none;width:3.6em!important;text-align:center;padding:9px 4px!important}
-.quick-add .dan,.edit-step .dan{flex:none;font-size:12px;color:var(--text2);font-weight:600}
+.quick-add .dan,.edit-step .dan,.edit-add .dan{flex:none;font-size:12px;color:var(--text2);font-weight:600;min-width:3em;text-align:center}
 .quick-add input{flex:1;min-width:0;background:var(--surface)!important;padding:9px 12px!important}
 .quick-add .btn-icon{background:var(--primary);color:#fff}
 .list > li.quick-add{border-top:1.5px dashed var(--border)}
@@ -227,6 +227,10 @@ textarea{resize:none}
 .mini svg.ic{width:18px;height:18px}
 .add-row{display:flex;gap:8px;margin-top:8px}
 .add-row input{flex:1}
+.edit-add{align-items:center}
+.edit-add .row-in{flex:none!important;width:3.4em;text-align:center;padding:10px 4px}
+.edit-add .dan{flex:none;font-size:12px;color:var(--text2);font-weight:600}
+.edit-add #newStep{min-width:0}
 .bulk{margin:14px 0}
 .bulk summary{color:var(--primary);font-size:13px;font-weight:600;cursor:pointer}
 .bulk textarea{margin:8px 0}
@@ -1230,7 +1234,7 @@ function editView() {
   const d = draft, n = d.steps.length;
   const rows = d.steps.map((st, i) => `
     <li class="edit-step">
-      <input type="text" class="row-in" data-field="row" data-idx="${i}" value="${esc(st.row || '')}" inputmode="numeric" placeholder="-" aria-label="段数"><span class="dan">段目</span>
+      <input type="text" class="row-in" data-field="row" data-idx="${i}" value="${esc(st.row || '')}" inputmode="numeric" placeholder="-" aria-label="段数"><span class="dan">${danLabel(st.row || '')}</span>
       <textarea rows="1" data-field="step" data-idx="${i}">${esc(st.text)}</textarea>
       <div class="step-btns">
         <button class="mini" data-action="up" data-idx="${i}" ${i === 0 ? 'disabled' : ''} aria-label="上へ">${ic('up')}</button>
@@ -1248,7 +1252,7 @@ function editView() {
     <textarea rows="2" data-field="memo" placeholder="例：参考にした本、気をつけるところなど">${esc(d.memo)}</textarea>
     <label class="label">工程（${n}）${d.isNew ? '　※あとからチェック画面でも追加できます' : ''}</label>
     <ol class="edit-steps">${rows}</ol>
-    <div class="add-row"><input type="text" id="newStep" placeholder="工程を追加" enterkeyhint="done"><button class="btn primary" data-action="addstep">${ic('plus')}追加</button></div>
+    <div class="add-row edit-add"><input type="text" class="row-in" id="newRow" value="${esc(nextRow(d.steps))}" inputmode="numeric" placeholder="-" aria-label="段数"><span class="dan" id="newDan">${danLabel(nextRow(d.steps))}</span><input type="text" id="newStep" placeholder="工程を追加" enterkeyhint="done"><button class="btn primary" data-action="addstep">${ic('plus')}追加</button></div>
     <details class="bulk"><summary>まとめて追加（1行＝1工程）</summary>
       <textarea id="bulk" rows="5" placeholder="1行に1工程ずつ。&#10;例）1段目：細編み&#10;　　2段目：長編み"></textarea>
       <button class="btn outline" data-action="bulkadd">${ic('plus')}まとめて追加</button>
@@ -1410,10 +1414,16 @@ async function saveComplete() {
 }
 
 /* ===== 編集の操作 ===== */
-function addSteps(lines, keepFocus) {
+// 編集画面で工程を足す。段数が書いていなければ、続きの段数を自動で付ける
+// （1つずつ追加するときは、段数の欄の値を使う。空にすれば段数なし）
+function addSteps(lines, keepFocus, rowVal) {
   const add = lines.map(s => s.trim()).filter(Boolean);
   if (!add.length) return;
-  add.forEach(t => draft.steps.push({ id: uid(), ...parseStep(t), done: false }));
+  add.forEach(t => {
+    const ps = parseStep(t);
+    if (!ps.row) ps.row = rowVal !== undefined ? rowVal.trim().replace(/段目?$/, '') : nextRow(draft.steps);
+    draft.steps.push({ id: uid(), ...ps, done: false });
+  });
   render();
   if (keepFocus) document.getElementById('newStep')?.focus();
 }
@@ -1426,7 +1436,7 @@ function saveDraft() {
   const name = draft.name.trim();
   if (!name) { toast('作品名を入力してください'); return; }
   const pending = document.getElementById('newStep')?.value.trim();   // 「追加」を押し忘れた入力も拾う
-  if (pending) draft.steps.push({ id: uid(), ...parseStep(pending), done: false });
+  if (pending) { const ps = parseStep(pending); if (!ps.row) ps.row = (document.getElementById('newRow')?.value || '').trim(); draft.steps.push({ id: uid(), ...ps, done: false }); }
   const steps = draft.steps.map(s => { const c = splitCount(s.text); const o = { ...s, row: String(s.row || '').trim().replace(/段目?$/, ''), text: c.text }; if (c.count) { o.count = c.count; o.n = Math.min(o.n || 0, c.count); } return o; }).filter(s => s.text);
   const data = { ...(findP(draft.id) || {}), id: draft.id, name, video: (draft.video || '').trim(), memo: draft.memo.trim(), steps, createdAt: draft.createdAt || Date.now(), updatedAt: Date.now() };
   const i = state.patterns.findIndex(p => p.id === data.id);
@@ -1518,7 +1528,7 @@ document.addEventListener('click', e => {
     case 'matedit': expandMat(); break;
     case 'quickadd': quickAdd(); break;
     case 'video': videoOpen = !videoOpen; render(); break;
-    case 'addstep': addSteps([document.getElementById('newStep').value], true); break;
+    case 'addstep': addSteps([document.getElementById('newStep').value], true, document.getElementById('newRow').value); break;
     case 'bulkadd': addSteps(document.getElementById('bulk').value.split('\n'), false); break;
     case 'up': swap(idx, idx - 1); break;
     case 'down': swap(idx, idx + 1); break;
@@ -1565,10 +1575,11 @@ document.addEventListener('click', e => {
 });
 
 document.addEventListener('input', e => {
-  if (e.target.id === 'quickRow' || e.target.id === 'sRow') {
-    const d = document.getElementById(e.target.id === 'quickRow' ? 'quickDan' : 'sDan');
+  if (e.target.id === 'quickRow' || e.target.id === 'sRow' || e.target.id === 'newRow') {
+    const d = document.getElementById({ quickRow: 'quickDan', sRow: 'sDan', newRow: 'newDan' }[e.target.id]);
     if (d) d.textContent = danLabel(e.target.value);
   }
+  if (e.target.dataset?.field === 'row') { const d = e.target.nextElementSibling; if (d?.classList.contains('dan')) d.textContent = danLabel(e.target.value); }
   if (e.target.type === 'color' && e.target.id.endsWith('Pick')) applyColor(e.target.id.slice(0, -4), e.target.value);
   if (e.target.classList.contains('yarn-in') && !e.isComposing && /[ 　]/.test(e.target.value)) {
     const parts = e.target.value.split(/[ 　]+/), rest = parts.pop();
@@ -1595,7 +1606,7 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); quickAdd(); return;
   }
   if (e.target.id === 'newStep' && e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
-    e.preventDefault(); addSteps([e.target.value], true);
+    e.preventDefault(); addSteps([e.target.value], true, document.getElementById('newRow')?.value);
   }
 });
 
