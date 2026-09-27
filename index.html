@@ -604,7 +604,9 @@ function nextRow(steps) {
     const m = String(steps[i].row || '').match(/(\d+)$/);
     if (m) return String(+m[1] + 1);
   }
-  return '0';   // まだ段数がなければ、最初は作り目から
+  // 段数の付いた工程がない：工程がまだ1つもなければ作り目(0)から、
+  // すでに段数なしの工程がある（作り目として入れた「鎖編み」など）なら1段目から
+  return steps.length ? '1' : '0';
 }
 const fixSteps = ps => ps.map(p => ({ ...p, steps: (p.steps || []).map(st => st.row === undefined ? { ...st, ...parseStep(st.text) } : st) }));
 const normalize = d => ({ patterns: Array.isArray(d?.patterns) ? fixSteps(d.patterns) : [], records: Array.isArray(d?.records) ? d.records : [], updatedAt: d?.updatedAt || 0 });
@@ -1207,7 +1209,7 @@ function patternBody(p) {
     ${p.startedAt ? `<p class="started" data-action="startedit" role="button">${fmtDate(p.startedAt)} から ${daysBetween(p.startedAt, today())}日目・編んだ日 ${(p.workDays || []).length}日${ic('pen')}</p>` : ''}
     <ol class="list">
       ${steps}
-      <li class="quick-add"><input type="text" class="row-in" id="quickRow" value="${esc(nextRow(p.steps))}" inputmode="tel" placeholder="-" aria-label="段数（1-10で範囲）"><span class="dan" id="quickDan">${danLabel(nextRow(p.steps))}</span><input type="text" id="quickStep" placeholder="${total ? '次の工程（×4で4回・×10段で10段）' : '例：鎖編み30目'}" enterkeyhint="enter"><button class="btn-icon" data-action="quickadd" aria-label="追加">${ic('plus')}</button></li>
+      <li class="quick-add"><input type="text" class="row-in" id="quickRow" value="${esc(nextRow(p.steps))}" data-auto="${esc(nextRow(p.steps))}" inputmode="tel" placeholder="-" aria-label="段数（1-10で範囲）"><span class="dan" id="quickDan">${danLabel(nextRow(p.steps))}</span><input type="text" id="quickStep" placeholder="${total ? '次の工程（×4で4回・×10段で10段）' : '例：鎖編み30目'}" enterkeyhint="enter"><button class="btn-icon" data-action="quickadd" aria-label="追加">${ic('plus')}</button></li>
     </ol>
     ${total ? '<p class="list-hint">工程を長押しすると、直したりワンポイントを付けたりできます</p>' : ''}
     <div class="actions">
@@ -1225,9 +1227,10 @@ function update() {
   const q = document.getElementById('quickStep');
   const r = document.getElementById('quickRow');
   const typed = q?.value || '', typedRow = r?.value, focus = document.activeElement?.id;
+  const rowEdited = r && typedRow !== r.dataset.auto;   // 自分で段数を打ち替えていたときだけ、その値を残す
   box.innerHTML = patternBody(p); hydratePhotos(box);
   document.getElementById('quickStep').value = typed;
-  if (typedRow !== undefined) { document.getElementById('quickRow').value = typedRow; document.getElementById('quickDan').textContent = danLabel(typedRow); }
+  if (rowEdited) { document.getElementById('quickRow').value = typedRow; document.getElementById('quickDan').textContent = danLabel(typedRow); }
   if (focus === 'quickStep' || focus === 'quickRow') document.getElementById(focus).focus();
 }
 
