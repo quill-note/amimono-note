@@ -97,6 +97,10 @@ main{max-width:640px;margin:0 auto;padding:14px 16px calc(env(safe-area-inset-bo
 .step.next .check{border-color:var(--primary)}
 .step .body{flex:1;min-width:0}
 .step .body .text{display:block}
+.cnt{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:120px;flex:none}
+.cnt i{width:18px;height:18px;border:1.5px solid var(--primary-light);border-radius:4px;background:var(--surface)}
+.cnt i.on{background:var(--primary);border-color:var(--primary)}
+.cnt-num{flex:none;font-size:13px;font-weight:700;color:var(--primary);font-variant-numeric:tabular-nums}
 .step .tip{display:flex;align-items:flex-start;gap:4px;margin-top:3px;font-size:12px;color:var(--text2);white-space:pre-wrap;word-break:break-word}
 .step .tip svg.ic{width:14px;height:14px;margin-top:1px;color:var(--primary)}
 .step.pressing{background:var(--surface2)}
@@ -542,11 +546,19 @@ setInterval(() => {
 const daysLabel = r => { const d = daysBetween(r.start, r.date); return [d ? `${d}日` : '', fmtMin(r.timeMin)].filter(Boolean).join('・'); };
 const byDateDesc = (a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0);
 // 「1段目：細編み」「3〜5段 長編み」のように書かれていたら段数と内容に分ける
+// 末尾の「×4」「x4」「*4」「×4回」を回数として取り出す
+function splitCount(text) {
+  const m = String(text).match(/^(.*?)\s*[×xX＊*✕]\s*([0-9０-９]+)\s*回?\s*$/);
+  if (!m || !m[1].trim()) return { text: String(text).trim() };
+  const n = parseInt(m[2].replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)));
+  return n >= 2 ? { text: m[1].trim(), count: Math.min(n, 99) } : { text: m[1].trim() };
+}
+function withCount(st) { const c = splitCount(st.text); return c.count ? { ...st, text: c.text, count: c.count, n: 0 } : st; }
 function parseStep(text) {
   const z = String(text).match(/^\s*(?:0\s*段目?|作り目)\s*[：:、,\s]\s*(.+)$/);   // 「作り目：くさり30目」→ 0（作り目）
-  if (z) return { row: '0', text: z[1].trim() };
+  if (z) return withCount({ row: '0', text: z[1].trim() });
   const m = String(text).match(/^\s*(\d+(?:\s*[〜~\-ー－]\s*\d+)?)\s*段目?\s*[：:、,\s]\s*(.+)$/);
-  return m ? { row: m[1].replace(/\s+/g, '').replace(/[~\-ー－]/, '〜'), text: m[2].trim() } : { row: '', text: String(text).trim() };
+  return withCount(m ? { row: m[1].replace(/\s+/g, '').replace(/[~\-ー－]/, '〜'), text: m[2].trim() } : { row: '', text: String(text).trim() });
 }
 // 0段目は「作り目」と表示する（かぎ針編みは最初に必ず作り目があるので）
 const rowLabel = r => r === '0' ? '作り目' : r ? `${r}段目` : '';
@@ -1093,6 +1105,8 @@ function openStepEdit(i) {
       <input type="text" id="sRow" class="row-in" value="${esc(st.row || '')}" inputmode="numeric" placeholder="-" style="flex:none;width:4em;text-align:center" aria-label="段数"><span class="dan" id="sDan">${danLabel(st.row || '')}</span>
       <input type="text" id="sText" value="${esc(st.text)}" placeholder="例：細編み">
     </div>
+    <label class="label">チェックの回数（1なら普通のチェック）</label>
+    <div class="dur"><input type="number" id="sCount" min="1" max="99" inputmode="numeric" value="${st.count || 1}">回</div>
     <label class="label">ワンポイント</label>
     <textarea id="sNote" rows="3" placeholder="例：角は3目編み入れる">${esc(st.note || '')}</textarea>
     <div class="actions"><button class="btn danger" data-ans="del">${ic('trash')}削除</button><button class="btn primary" data-ans="save">保存</button></div>`);
@@ -1102,7 +1116,11 @@ function openStepEdit(i) {
       const text = (formVals.sText || '').trim();
       if (!text) { toast('工程の内容を入れてください'); return; }
       st.row = (formVals.sRow || '').trim().replace(/段目?$/, '');
-      st.text = text;
+      const c = splitCount(text);
+      st.text = c.text;
+      const cnt = c.count || Math.max(1, Math.min(99, parseInt(formVals.sCount) || 1));
+      if (cnt > 1) { st.count = cnt; st.n = Math.min(st.n || 0, cnt); st.done = st.n >= cnt; }
+      else { if (st.count) st.done = (st.n || 0) >= st.count && !!st.done; delete st.count; delete st.n; }
       const note = (formVals.sNote || '').trim();
       if (note) st.note = note; else delete st.note;
       p.updatedAt = Date.now(); save(); update(); toast('保存しました');
@@ -1140,6 +1158,9 @@ function patternBody(p) {
       ${p.steps.some(x => x.row) ? `<span class="row-no">${esc(rowLabel(st.row))}</span>` : ''}
       <span class="body"><span class="text">${esc(st.text)}</span>${st.note ? `<span class="tip">${ic('bulb')}<span>${esc(st.note)}</span></span>` : ''}${isPaused(st) ? `<span class="pause-note">${ic('bookmark')}途中${st.pause ? '：' + esc(st.pause) : ''}</span>` : ''}</span>
       ${!st.done && (i === nextIdx || isPaused(st)) ? `<button class="pause-btn ${isPaused(st) ? 'on' : ''}" data-action="pause" data-idx="${i}" aria-label="しおり（編み途中の印）">${ic('bookmark')}</button>` : ''}
+      ${st.count > 1 ? (st.count <= 12
+        ? `<span class="cnt" aria-label="${st.n || 0} / ${st.count}">${Array.from({ length: st.count }, (_, k) => `<i class="${k < (st.n || 0) ? 'on' : ''}" data-action="cntset" data-idx="${i}" data-k="${k}"></i>`).join('')}</span>`
+        : `<span class="cnt-num">${st.n || 0} / ${st.count}</span>`) : ''}
       <span class="check" role="checkbox" aria-checked="${!!st.done}">${st.done ? ic('check') : ''}</span>
     </li>`).join('');
   const recs = recordsOf(p.id).sort(byDateDesc);
@@ -1150,7 +1171,7 @@ function patternBody(p) {
     ${p.startedAt ? `<p class="started" data-action="startedit" role="button">${fmtDate(p.startedAt)} から ${daysBetween(p.startedAt, today())}日目・編んだ日 ${(p.workDays || []).length}日${ic('pen')}</p>` : ''}
     <ol class="list">
       ${steps}
-      <li class="quick-add"><input type="text" class="row-in" id="quickRow" value="${esc(nextRow(p.steps))}" inputmode="numeric" placeholder="-" aria-label="段数"><span class="dan" id="quickDan">${danLabel(nextRow(p.steps))}</span><input type="text" id="quickStep" placeholder="${total ? '次の工程' : '例：細編み'}" enterkeyhint="enter"><button class="btn-icon" data-action="quickadd" aria-label="追加">${ic('plus')}</button></li>
+      <li class="quick-add"><input type="text" class="row-in" id="quickRow" value="${esc(nextRow(p.steps))}" inputmode="numeric" placeholder="-" aria-label="段数"><span class="dan" id="quickDan">${danLabel(nextRow(p.steps))}</span><input type="text" id="quickStep" placeholder="${total ? '次の工程（×4で4回）' : '例：鎖編み30目'}" enterkeyhint="enter"><button class="btn-icon" data-action="quickadd" aria-label="追加">${ic('plus')}</button></li>
     </ol>
     ${total ? '<p class="list-hint">工程を長押しすると、直したりワンポイントを付けたりできます</p>' : ''}
     <div class="actions">
@@ -1179,7 +1200,7 @@ function quickAdd() {
   if (!p || !q.value.trim()) return;
   const typedRow = r.value.trim().replace(/段目?$/, '');
   const ps = parseStep(q.value);   // 「作り目：〜」「3段目：〜」と書いてあれば、そちらを優先
-  const st = ps.row ? ps : { row: typedRow, text: q.value.trim() };
+  const st = ps.row ? ps : { ...ps, row: typedRow };
   p.steps.push({ id: uid(), ...st, done: false });
   p.updatedAt = Date.now();
   q.value = ''; r.value = nextRow(p.steps);   // 次の段数を自動で入れておく
@@ -1384,7 +1405,7 @@ async function saveComplete() {
   f.photo = await commitPhoto(undefined);
   state.records.push({ id: uid(), patternId: p.id, patternName: p.name, ...f, createdAt: Date.now() });
   stopTimer(p);
-  if (document.getElementById('mReset').checked) { p.steps.forEach(s => { s.done = false; delete s.pause; }); clearRun(p); }
+  if (document.getElementById('mReset').checked) { p.steps.forEach(s => { s.done = false; delete s.pause; if (s.count) s.n = 0; }); clearRun(p); }
   save(); closeModal(); update(); toast('記録しました');
 }
 
@@ -1406,7 +1427,7 @@ function saveDraft() {
   if (!name) { toast('作品名を入力してください'); return; }
   const pending = document.getElementById('newStep')?.value.trim();   // 「追加」を押し忘れた入力も拾う
   if (pending) draft.steps.push({ id: uid(), ...parseStep(pending), done: false });
-  const steps = draft.steps.map(s => ({ ...s, row: String(s.row || '').trim().replace(/段目?$/, ''), text: s.text.trim() })).filter(s => s.text);
+  const steps = draft.steps.map(s => { const c = splitCount(s.text); const o = { ...s, row: String(s.row || '').trim().replace(/段目?$/, ''), text: c.text }; if (c.count) { o.count = c.count; o.n = Math.min(o.n || 0, c.count); } return o; }).filter(s => s.text);
   const data = { ...(findP(draft.id) || {}), id: draft.id, name, video: (draft.video || '').trim(), memo: draft.memo.trim(), steps, createdAt: draft.createdAt || Date.now(), updatedAt: Date.now() };
   const i = state.patterns.findIndex(p => p.id === data.id);
   if (i >= 0) state.patterns[i] = data; else state.patterns.unshift(data);
@@ -1434,16 +1455,35 @@ document.addEventListener('click', e => {
     case 'new': draft = { id: uid(), name: '', video: '', memo: '', steps: [], isNew: true }; go('edit'); break;
     case 'edit': draft = { ...structuredClone(p), isNew: false }; go('edit', p.id); break;
 
+    case 'cntset': {   // 四角をタップ：そこまで埋める（最後の埋まった四角なら1つ戻す）
+      const st = p.steps[idx], k = +el.dataset.k;
+      st.n = (st.n || 0) === k + 1 ? k : k + 1;
+      st.done = st.n >= st.count;
+      if (st.done) delete st.pause;
+      if (st.n) markDay(p);
+      p.updatedAt = Date.now(); save(); update();
+      if (p.steps.every(s => s.done)) toast('全工程チェック完了！');
+      break;
+    }
     case 'toggle':
+      if (p.steps[idx].count > 1 && !p.steps[idx].done) {   // 回数のある工程：1回ずつ
+        const st = p.steps[idx];
+        st.n = Math.min(st.count, (st.n || 0) + 1); markDay(p);
+        if (st.n >= st.count) { st.done = true; delete st.pause; }
+        p.updatedAt = Date.now(); save(); update();
+        if (p.steps.every(s => s.done)) toast('全工程チェック完了！');
+        break;
+      }
+      if (p.steps[idx].count > 1) p.steps[idx].n = 0;   // 完了している回数付きの工程をタップ → 0からやり直し
       p.steps[idx].done = !p.steps[idx].done;
       if (p.steps[idx].done) delete p.steps[idx].pause;
       if (p.steps[idx].done) markDay(p);   // チェックした日を「編んだ日」に（最初の日が「始めた日」）
-      else if (!p.steps.some(s => s.done) && !elapsed(p)) { delete p.startedAt; delete p.workDays; }   // 全部外して時間も0なら「まだ始めていない」に戻す
+      else if (!p.steps.some(s => s.done || s.n) && !elapsed(p)) { delete p.startedAt; delete p.workDays; }   // 全部外して時間も0なら「まだ始めていない」に戻す
       p.updatedAt = Date.now(); save(); update();
       if (p.steps.every(s => s.done)) toast('全工程チェック完了！');
       break;
     case 'reset':
-      askConfirm('チェックをすべて外しますか？', { ok: '外す', sub: p.startedAt || p.timer ? 'タイマーと編んだ日もリセットされます（今回の材料はそのまま残ります）' : '' }).then(ok => { if (ok) { p.steps.forEach(s => { s.done = false; delete s.pause; }); clearProgress(p); save(); update(); } });
+      askConfirm('チェックをすべて外しますか？', { ok: '外す', sub: p.startedAt || p.timer ? 'タイマーと編んだ日もリセットされます（今回の材料はそのまま残ります）' : '' }).then(ok => { if (ok) { p.steps.forEach(s => { s.done = false; delete s.pause; if (s.count) s.n = 0; }); clearProgress(p); save(); update(); } });
       break;
     case 'complete': openComplete(p); break;
     case 'modal-close': closeModal(); break;
@@ -1495,7 +1535,7 @@ document.addEventListener('click', e => {
         if (!ok) return;
         const copy = {
           id: uid(), name: src.name + '（コピー）', video: src.video || '', memo: src.memo || '',
-          steps: src.steps.map(st => { const c = { ...st, id: uid(), done: false }; delete c.pause; return c; }),
+          steps: src.steps.map(st => { const c = { ...st, id: uid(), done: false }; delete c.pause; if (c.count) c.n = 0; return c; }),
           createdAt: Date.now(), updatedAt: Date.now(),
         };
         const i = state.patterns.findIndex(x => x.id === src.id);
