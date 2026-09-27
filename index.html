@@ -97,10 +97,10 @@ main{max-width:640px;margin:0 auto;padding:14px 16px calc(env(safe-area-inset-bo
 .step.next .check{border-color:var(--primary)}
 .step .body{flex:1;min-width:0}
 .step .body .text{display:block}
-.cnt{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:120px;flex:none}
-.cnt i{width:18px;height:18px;border:1.5px solid var(--primary-light);border-radius:4px;background:var(--surface)}
-.cnt i.on{background:var(--primary);border-color:var(--primary)}
-.cnt-num{flex:none;font-size:13px;font-weight:700;color:var(--primary);font-variant-numeric:tabular-nums}
+.cnt-pill{flex:none;display:inline-flex;align-items:center;gap:2px;padding:3px 10px;border-radius:14px;background:var(--primary-pale);color:var(--primary);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cnt-pill .minus{border:none;background:none;color:var(--primary);width:22px;height:22px;margin-left:-6px;display:grid;place-items:center;padding:0;font-size:16px;line-height:1}
+.cnt-bar{display:block;height:3px;border-radius:2px;background:var(--surface2);margin-top:5px;overflow:hidden;max-width:160px}
+.cnt-bar span{display:block;height:100%;background:var(--primary)}
 .step .tip{display:flex;align-items:flex-start;gap:4px;margin-top:3px;font-size:12px;color:var(--text2);white-space:pre-wrap;word-break:break-word}
 .step .tip svg.ic{width:14px;height:14px;margin-top:1px;color:var(--primary)}
 .step.pressing{background:var(--surface2)}
@@ -1160,11 +1160,9 @@ function patternBody(p) {
   const steps = p.steps.map((st, i) => `
     <li class="step ${st.done ? 'done' : ''} ${i === nextIdx ? 'next' : ''} ${isPaused(st) ? 'paused' : ''}" data-action="toggle" data-idx="${i}">
       ${p.steps.some(x => x.row) ? `<span class="row-no">${esc(rowLabel(st.row))}</span>` : ''}
-      <span class="body"><span class="text">${esc(st.text)}</span>${st.note ? `<span class="tip">${ic('bulb')}<span>${esc(st.note)}</span></span>` : ''}${isPaused(st) ? `<span class="pause-note">${ic('bookmark')}途中${st.pause ? '：' + esc(st.pause) : ''}</span>` : ''}</span>
+      <span class="body"><span class="text">${esc(st.text)}</span>${st.count > 1 && !st.done ? `<span class="cnt-bar"><span style="width:${Math.round((st.n || 0) / st.count * 100)}%"></span></span>` : ''}${st.note ? `<span class="tip">${ic('bulb')}<span>${esc(st.note)}</span></span>` : ''}${isPaused(st) ? `<span class="pause-note">${ic('bookmark')}途中${st.pause ? '：' + esc(st.pause) : ''}</span>` : ''}</span>
       ${!st.done && (i === nextIdx || isPaused(st)) ? `<button class="pause-btn ${isPaused(st) ? 'on' : ''}" data-action="pause" data-idx="${i}" aria-label="しおり（編み途中の印）">${ic('bookmark')}</button>` : ''}
-      ${st.count > 1 ? (st.count <= 12
-        ? `<span class="cnt" aria-label="${st.n || 0} / ${st.count}">${Array.from({ length: st.count }, (_, k) => `<i class="${k < (st.n || 0) ? 'on' : ''}" data-action="cntset" data-idx="${i}" data-k="${k}"></i>`).join('')}</span>`
-        : `<span class="cnt-num">${st.n || 0} / ${st.count}</span>`) : ''}
+      ${st.count > 1 ? `<span class="cnt-pill">${(st.n || 0) > 0 && !st.done ? `<button class="minus" data-action="cntdown" data-idx="${i}" aria-label="1つ戻す">−</button>` : ''}${st.n || 0} / ${st.count}</span>` : ''}
       <span class="check" role="checkbox" aria-checked="${!!st.done}">${st.done ? ic('check') : ''}</span>
     </li>`).join('');
   const recs = recordsOf(p.id).sort(byDateDesc);
@@ -1465,6 +1463,11 @@ document.addEventListener('click', e => {
     case 'new': draft = { id: uid(), name: '', video: '', memo: '', steps: [], isNew: true }; go('edit'); break;
     case 'edit': draft = { ...structuredClone(p), isNew: false }; go('edit', p.id); break;
 
+    case 'cntdown': {
+      const st = p.steps[idx];
+      st.n = Math.max(0, (st.n || 0) - 1); st.done = false;
+      p.updatedAt = Date.now(); save(); update(); break;
+    }
     case 'cntset': {   // 四角をタップ：そこまで埋める（最後の埋まった四角なら1つ戻す）
       const st = p.steps[idx], k = +el.dataset.k;
       st.n = (st.n || 0) === k + 1 ? k : k + 1;
