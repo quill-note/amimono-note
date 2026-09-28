@@ -195,6 +195,7 @@ main{max-width:640px;margin:0 auto;padding:14px 16px calc(env(safe-area-inset-bo
 .prev button{text-align:left;border:1.5px solid var(--border);background:var(--surface2);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text2)}
 .prev button:active{border-color:var(--primary);color:var(--primary)}
 .prev .pdate{font-size:11px;color:var(--text3);margin-right:6px}
+.rows-info{font-size:12px;font-weight:700;color:var(--primary);margin:-6px 0 4px;text-align:right}
 .started{display:flex;justify-content:flex-end;align-items:center;gap:4px;font-size:12px;color:var(--text3);margin:-6px 0 10px;cursor:pointer}
 .started svg.ic{width:13px;height:13px}
 .sheet-sub{font-size:13px;color:var(--text2);margin-bottom:4px}
@@ -599,6 +600,20 @@ const rowLabel = r => r === '0' ? '作り目' : r ? `${r}段目` : '';
 const danLabel = r => String(r).trim() === '0' ? '作り目' : '段目';
 // 次の段数の候補：最後の工程の段数（範囲なら終わりの数）＋1
 // 次の段数の候補：いちばん最後に段数が入っている工程の＋1。まだ1つもなければ1段目
+// 全体の段数（作り目は数えない）。工程の段数から自動で出す
+function totalRows(steps) {
+  let max = 0;
+  steps.forEach(st => { const m = String(st.row || '').match(/(\d+)$/); if (m) max = Math.max(max, +m[1]); });
+  return max;
+}
+// いま編んでいる段（まだチェックしていない最初の工程の段）
+function currentRow(steps) {
+  const st = steps.find(x => !x.done);
+  if (!st) return null;
+  const m = String(st.row || '').match(/^(\d+)/);
+  if (!m) return null;
+  return +m[1] + (st.byRow ? (st.n || 0) : 0);
+}
 function nextRow(steps) {
   for (let i = steps.length - 1; i >= 0; i--) {
     const m = String(steps[i].row || '').match(/(\d+)$/);
@@ -1206,6 +1221,7 @@ function patternBody(p) {
     ${matView(p)}
     ${timerView(p)}
     <div class="progress"><div class="bar"><span style="width:${pct}%"></span></div><div>${done} / ${total}</div></div>
+    ${totalRows(p.steps) ? `<p class="rows-info">全${totalRows(p.steps)}段${currentRow(p.steps) !== null ? `・いま${currentRow(p.steps) === 0 ? '作り目' : currentRow(p.steps) + '段目'}` : '・全部編み終わりました'}</p>` : ''}
     ${p.startedAt ? `<p class="started" data-action="startedit" role="button">${fmtDate(p.startedAt)} から ${daysBetween(p.startedAt, today())}日目・編んだ日 ${(p.workDays || []).length}日${ic('pen')}</p>` : ''}
     <ol class="list">
       ${steps}
@@ -1255,7 +1271,7 @@ function recordItem(r, showName = false) {
     <div class="rbody">
       <div class="record-head"><span class="date">${fmtDate(r.date)}</span>${showName ? `<span class="rname">${esc(name)}</span>` : ''}${days ? `<span class="badge">${days}</span>` : ''}</div>
       ${yarnsOf(r).length ? `<div class="yarn">${ic('yarn')}${esc(yarnsOf(r).map(y => y.name).join('・'))}</div>` : ''}
-      ${r.size ? `<div class="yarn">${ic('ruler')}${esc(r.size)}</div>` : ''}
+      ${r.size || r.rows ? `<div class="yarn">${ic('ruler')}${esc([r.size, r.rows ? `全${r.rows}段` : ''].filter(Boolean).join('　'))}</div>` : ''}
       ${r.hook ? `<div class="yarn">${ic('hook')}${esc(r.hook)}</div>` : ''}
       ${r.cast ? `<div class="yarn">${ic('list')}作り目 ${esc(castLabel(r.cast))}</div>` : ''}
       ${r.memo ? `<div class="rmemo">${esc(r.memo)}</div>` : ''}
@@ -1371,6 +1387,8 @@ function recordForm(r, fromRun = false) {
       <div style="flex:1.6"><label class="label">編んだ時間</label><div class="dur"><input type="number" id="mH" min="0" inputmode="numeric" value="${r.timeMin ? Math.floor(r.timeMin / 60) : ''}" placeholder="0">時間<input type="number" id="mM" min="0" max="59" inputmode="numeric" value="${r.timeMin ? r.timeMin % 60 : ''}" placeholder="0">分</div></div>
       <div><label class="label">編んだ日</label><div class="dur"><input type="number" id="mWork" min="0" inputmode="numeric" value="${r.workDays || ''}" placeholder="-">日</div></div>
     </div>
+    <label class="label">全体の段数（工程から自動で入ります）</label>
+    <div class="dur"><input type="number" id="mRows" min="0" inputmode="numeric" value="${r.rows || ''}" placeholder="-">段</div>
     ${mat}
     <label class="label">メモ</label><textarea id="mMemo" rows="3" placeholder="気づいたこと、次に気をつけることなど">${esc(r.memo || '')}</textarea>`;
 }
@@ -1381,6 +1399,7 @@ const readForm = () => ({
   memo: document.getElementById('mMemo').value.trim(),
   timeMin: (parseInt(document.getElementById('mH').value) || 0) * 60 + (parseInt(document.getElementById('mM').value) || 0) || null,
   workDays: parseInt(document.getElementById('mWork').value) || null,
+  rows: parseInt(document.getElementById('mRows').value) || null,
 });
 
 function openComplete(p) {
@@ -1389,7 +1408,7 @@ function openComplete(p) {
   const warn = done < total ? `<p class="warn">未チェックの工程が ${total - done} 個あります。このまま記録しますか？</p>` : '';
   modal.innerHTML = `<div class="sheet">
     <div class="sheet-title">${ic('award')}完成おめでとうございます</div>${warn}
-    ${recordForm({ ...(p.run || {}), start: p.startedAt || '', date: today(), timeMin: Math.round(elapsed(p) / 60000), workDays: (p.workDays || []).length }, true)}
+    ${recordForm({ ...(p.run || {}), start: p.startedAt || '', date: today(), timeMin: Math.round(elapsed(p) / 60000), workDays: (p.workDays || []).length, rows: totalRows(p.steps) }, true)}
     <label class="checkline"><input type="checkbox" id="mReset" checked> チェックをすべて外して、また作れる状態にする</label>
     <div class="actions"><button class="btn" data-action="modal-close">やめる</button><button class="btn primary" data-action="modal-save">記録する</button></div>
   </div>`;
