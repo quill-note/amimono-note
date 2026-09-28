@@ -553,17 +553,16 @@ const daysLabel = r => { const d = daysBetween(r.start, r.date); return [d ? `${
 const byDateDesc = (a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0);
 // 「1段目：細編み」「3〜5段 長編み」のように書かれていたら段数と内容に分ける
 // 末尾の「×4」「x4」「*4」「×4回」を回数として取り出す
+// 回数の書き方
+//  ・「×10」「×10段」「10段」→ 10段くり返し（段数に反映）
+//  ・「×4回」「×4目」       → 1つの段の中で4回チェック（段数は増えない）
 function splitCount(text) {
-  // 「×10段」「10段」→ 10段くり返し
-  const r = String(text).match(/^(.*?)\s*(?:[×xX＊*✕]\s*)?([0-9０-９]+)\s*段\s*$/);
-  if (r && r[1].trim()) {
-    const n = parseInt(r[2].replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)));
-    if (n >= 2) return { text: r[1].trim(), rows: Math.min(n, 999) };
-  }
-  const m = String(text).match(/^(.*?)\s*[×xX＊*✕]\s*([0-9０-９]+)\s*回?\s*$/);
-  if (!m || !m[1].trim()) return { text: String(text).trim() };
-  const n = parseInt(m[2].replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)));
-  return n >= 2 ? { text: m[1].trim(), count: Math.min(n, 99) } : { text: m[1].trim() };
+  const num = v => parseInt(v.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)));
+  const c = String(text).match(/^(.*?)\s*[×xX＊*✕]\s*([0-9０-９]+)\s*[回目]\s*$/);
+  if (c && c[1].trim()) { const n = num(c[2]); return n >= 2 ? { text: c[1].trim(), count: Math.min(n, 99) } : { text: c[1].trim() }; }
+  const r = String(text).match(/^(.*?)\s*(?:[×xX＊*✕]\s*([0-9０-９]+)\s*段?|([0-9０-９]+)\s*段)\s*$/);
+  if (r && r[1].trim()) { const n = num(r[2] || r[3]); if (n >= 2) return { text: r[1].trim(), rows: Math.min(n, 999) }; return { text: r[1].trim() }; }
+  return { text: String(text).trim() };
 }
 // 段数の書き方をそろえる：「1-10」「1~10」「1ー10」→「1〜10」、「段目」は取る
 const normRow = r => String(r || '').trim().replace(/段目?$/, '').replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/\s*[~\-ー－〜]\s*/, '〜');
@@ -1225,7 +1224,7 @@ function patternBody(p) {
     ${p.startedAt ? `<p class="started" data-action="startedit" role="button">${fmtDate(p.startedAt)} から ${daysBetween(p.startedAt, today())}日目・編んだ日 ${(p.workDays || []).length}日${ic('pen')}</p>` : ''}
     <ol class="list">
       ${steps}
-      <li class="quick-add"><input type="text" class="row-in" id="quickRow" value="${esc(nextRow(p.steps))}" data-auto="${esc(nextRow(p.steps))}" inputmode="tel" placeholder="-" aria-label="段数（1-10で範囲）"><span class="dan" id="quickDan">${danLabel(nextRow(p.steps))}</span><input type="text" id="quickStep" placeholder="${total ? '次の工程（×4で4回・×10段で10段）' : '例：鎖編み30目'}" enterkeyhint="enter"><button class="btn-icon" data-action="quickadd" aria-label="追加">${ic('plus')}</button></li>
+      <li class="quick-add"><input type="text" class="row-in" id="quickRow" value="${esc(nextRow(p.steps))}" data-auto="${esc(nextRow(p.steps))}" inputmode="tel" placeholder="-" aria-label="段数（1-10で範囲）"><span class="dan" id="quickDan">${danLabel(nextRow(p.steps))}</span><input type="text" id="quickStep" placeholder="${total ? '次の工程（×10で10段・×4回で4回）' : '例：鎖編み30目'}" enterkeyhint="enter"><button class="btn-icon" data-action="quickadd" aria-label="追加">${ic('plus')}</button></li>
     </ol>
     ${total ? '<p class="list-hint">工程を長押しすると、直したりワンポイントを付けたりできます</p>' : ''}
     <div class="actions">
