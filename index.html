@@ -1147,41 +1147,75 @@ function checkLongTimer() {
 }
 
 // 工程を長押し → その工程の編集（段数・内容・ワンポイント・削除）
+// 段の範囲（作り目・段数なしは null）
+function rowEnds(row) {
+  const m = String(row || '').match(/^(\d+)(?:〜(\d+))?$/);
+  if (!m || m[1] === '0') return null;
+  return [+m[1], +(m[2] || m[1])];
+}
+// i番目より後ろの工程の段数を delta だけずらす（after 段より後ろにあるものだけ）
+function shiftRowsAfter(p, i, after, delta) {
+  if (!delta) return;
+  for (let j = i + 1; j < p.steps.length; j++) {
+    const e = rowEnds(p.steps[j].row);
+    if (!e || e[0] <= after) continue;
+    const a = Math.max(1, e[0] + delta), b = Math.max(a, e[1] + delta);
+    p.steps[j].row = a === b ? String(a) : `${a}〜${b}`;
+  }
+}
 function openStepEdit(i) {
   const p = findP(view.id), st = p?.steps[i];
   if (!st) return;
+  const rows = st.byRow ? st.count : Math.max(1, rangeLen(st.row) || 1);
+  const inner = !st.byRow && st.count > 1 ? st.count : 1;
   sheet(`<div class="sheet-title">${ic('pen')}工程を直す<button class="sheet-close" data-action="modal-close" aria-label="閉じる">${ic('x')}</button></div>
     <div class="add-row" style="align-items:center">
-      <input type="text" id="sRow" class="row-in" value="${esc(st.row || '')}" inputmode="tel" placeholder="-" style="flex:none;width:4em;text-align:center" aria-label="段数"><span class="dan" id="sDan">${danLabel(st.row || '')}</span>
+      <input type="text" id="sRow" class="row-in" value="${esc(String(st.row || '').split('〜')[0])}" inputmode="tel" placeholder="-" style="flex:none;width:4em;text-align:center" aria-label="始まりの段"><span class="dan" id="sDan">${danLabel(st.row || '')}</span>
       <input type="text" id="sText" value="${esc(st.text)}" placeholder="例：細編み">
     </div>
-    <label class="label">チェックの回数（1なら普通のチェック）</label>
-    <div class="dur"><input type="number" id="sCount" min="1" max="99" inputmode="numeric" value="${st.count || 1}">回</div>
+    <div class="dates">
+      <div><label class="label">くり返す段数</label><div class="dur"><input type="number" id="sRows" min="1" max="999" inputmode="numeric" value="${rows}">段</div></div>
+      <div><label class="label">1段の中の回数</label><div class="dur"><input type="number" id="sCount" min="1" max="99" inputmode="numeric" value="${inner}">回</div></div>
+    </div>
+    <p class="note">くり返す段数を変えると、後ろの工程の段数も自動でずれます。</p>
     <label class="label">ワンポイント</label>
     <textarea id="sNote" rows="3" placeholder="例：角は3目編み入れる">${esc(st.note || '')}</textarea>
     <div class="actions"><button class="btn danger" data-ans="del">${ic('trash')}削除</button><button class="btn primary" data-ans="save">保存</button></div>`);
-  setTimeout(() => document.getElementById(st.note ? 'sText' : 'sNote')?.focus(), 80);
   modalResolve = v => {
+    const old = rowEnds(st.row);
     if (v === 'save') {
       const text = (formVals.sText || '').trim();
       if (!text) { toast('工程の内容を入れてください'); return; }
-      st.row = normRow(formVals.sRow);
       const c = splitCount(text);
       st.text = c.text;
-      if (c.rows) { st.rowsN = c.rows; applyRows(st); }
-      const len = rangeLen(st.row);
-      let cnt = c.count || Math.max(1, Math.min(99, parseInt(formVals.sCount) || 1));
-      if (len > 1 && cnt <= 1) cnt = len;   // 範囲の段数なら、段の数だけ数える
-      if (len > 1 && cnt === len) st.byRow = true; else delete st.byRow;
-      if (cnt > 1) { st.count = cnt; st.n = Math.min(st.n || 0, cnt); st.done = st.n >= cnt; }
-      else { if (st.count) st.done = (st.n || 0) >= st.count && !!st.done; delete st.count; delete st.n; }
+      let start = normRow(formVals.sRow);
+      let nRows = c.rows || Math.max(1, Math.min(999, parseInt(formVals.sRows) || 1));
+      let inCnt = c.count || Math.max(1, Math.min(99, parseInt(formVals.sCount) || 1));
+      if (rangeLen(start) > 1) { nRows = rangeLen(start); start = start.split('〜')[0]; }   // 「1-5」と直接書いたとき
+      const sm = String(start).match(/^(\d+)$/);
+      const prevN = st.n || 0;
+      delete st.count; delete st.n; delete st.byRow;
+      if (sm && +sm[1] > 0 && nRows > 1) {                 // 何段もくり返す
+        st.row = `${+sm[1]}〜${+sm[1] + nRows - 1}`;
+        st.count = nRows; st.n = Math.min(prevN, nRows); st.byRow = true; st.done = st.n >= nRows;
+      } else {
+        st.row = start;
+        if (inCnt > 1) { st.count = inCnt; st.n = Math.min(prevN, inCnt); st.done = st.n >= inCnt; }
+      }
+      // 後ろの工程の段数を合わせる
+      const now = rowEnds(st.row);
+      if (old && now) shiftRowsAfter(p, i, old[1], now[1] - old[1]);
       const note = (formVals.sNote || '').trim();
       if (note) st.note = note; else delete st.note;
       p.updatedAt = Date.now(); save(); update(); toast('保存しました');
     }
     if (v === 'del') {
-      askConfirm(`「${(st.row ? rowLabel(st.row) + ' ' : '') + st.text}」を削除しますか？`, { ok: '削除', danger: true }).then(ok => {
-        if (ok) { p.steps.splice(p.steps.indexOf(st), 1); p.updatedAt = Date.now(); save(); update(); toast('削除しました'); }
+      askConfirm(`「${(st.row ? rowLabel(st.row) + ' ' : '') + st.text}」を削除しますか？`, { ok: '削除', danger: true, sub: old ? '後ろの工程の段数は、つめて付け直します' : '' }).then(ok => {
+        if (!ok) return;
+        const k = p.steps.indexOf(st);
+        p.steps.splice(k, 1);
+        if (old) shiftRowsAfter(p, k - 1, old[0] - 1, -(old[1] - old[0] + 1));
+        p.updatedAt = Date.now(); save(); update(); toast('削除しました');
       });
     }
   };
