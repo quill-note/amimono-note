@@ -1166,18 +1166,16 @@ function shiftRowsAfter(p, i, after, delta) {
 function openStepEdit(i) {
   const p = findP(view.id), st = p?.steps[i];
   if (!st) return;
-  const rows = st.byRow ? st.count : Math.max(1, rangeLen(st.row) || 1);
-  const inner = !st.byRow && st.count > 1 ? st.count : 1;
+  // 回数＝くり返す段数（前に「1段の中の回数」で入れた工程も、その数を段数として出す）
+  const rows = st.count > 1 ? st.count : Math.max(1, rangeLen(st.row) || 1);
   sheet(`<div class="sheet-title">${ic('pen')}工程を直す<button class="sheet-close" data-action="modal-close" aria-label="閉じる">${ic('x')}</button></div>
     <div class="add-row" style="align-items:center">
       <input type="text" id="sRow" class="row-in" value="${esc(String(st.row || '').split('〜')[0])}" inputmode="tel" placeholder="-" style="flex:none;width:4em;text-align:center" aria-label="始まりの段"><span class="dan" id="sDan">${danLabel(st.row || '')}</span>
       <input type="text" id="sText" value="${esc(st.text)}" placeholder="例：細編み">
     </div>
-    <div class="dates">
-      <div><label class="label">くり返す段数</label><div class="dur"><input type="number" id="sRows" min="1" max="999" inputmode="numeric" value="${rows}">段</div></div>
-      <div><label class="label">1段の中の回数</label><div class="dur"><input type="number" id="sCount" min="1" max="99" inputmode="numeric" value="${inner}">回</div></div>
-    </div>
-    <p class="note">くり返す段数を変えると、後ろの工程の段数も自動でずれます。</p>
+    <label class="label">回数（くり返す段数）</label>
+    <div class="dur"><input type="number" id="sRows" min="1" max="999" inputmode="numeric" value="${rows}">回</div>
+    <p class="note">回数を変えると、この工程の段数と、後ろの工程の段数が自動で変わります。</p>
     <label class="label">ワンポイント</label>
     <textarea id="sNote" rows="3" placeholder="例：角は3目編み入れる">${esc(st.note || '')}</textarea>
     <div class="actions"><button class="btn danger" data-ans="del">${ic('trash')}削除</button><button class="btn primary" data-ans="save">保存</button></div>`);
@@ -1190,7 +1188,7 @@ function openStepEdit(i) {
       st.text = c.text;
       let start = normRow(formVals.sRow);
       let nRows = c.rows || Math.max(1, Math.min(999, parseInt(formVals.sRows) || 1));
-      let inCnt = c.count || Math.max(1, Math.min(99, parseInt(formVals.sCount) || 1));
+      let inCnt = c.count || 1;   // 1段の中の回数は「×4回」と書いたときだけ
       if (rangeLen(start) > 1) { nRows = rangeLen(start); start = start.split('〜')[0]; }   // 「1-5」と直接書いたとき
       const sm = String(start).match(/^(\d+)$/);
       const prevN = st.n || 0;
@@ -1258,7 +1256,7 @@ function patternBody(p) {
     ${p.startedAt ? `<p class="started" data-action="startedit" role="button">${fmtDate(p.startedAt)} から ${daysBetween(p.startedAt, today())}日目・編んだ日 ${(p.workDays || []).length}日${ic('pen')}</p>` : ''}
     <ol class="list">
       ${steps}
-      <li class="quick-add"><input type="text" class="row-in" id="quickRow" value="${esc(nextRow(p.steps))}" data-auto="${esc(nextRow(p.steps))}" inputmode="tel" placeholder="-" aria-label="段数（1-10で範囲）"><span class="dan" id="quickDan">${danLabel(nextRow(p.steps))}</span><input type="text" id="quickStep" placeholder="${total ? '次の工程（×10で10段・×4回で4回）' : '例：鎖編み30目'}" enterkeyhint="enter"><button class="btn-icon" data-action="quickadd" aria-label="追加">${ic('plus')}</button></li>
+      <li class="quick-add"><input type="text" class="row-in" id="quickRow" value="${esc(nextRow(p.steps))}" data-auto="${esc(nextRow(p.steps))}" inputmode="tel" placeholder="-" aria-label="段数（1-10で範囲）"><span class="dan" id="quickDan">${danLabel(nextRow(p.steps))}</span><input type="text" id="quickStep" placeholder="${total ? '次の工程（×10で10段）' : '例：鎖編み30目'}" enterkeyhint="enter"><button class="btn-icon" data-action="quickadd" aria-label="追加">${ic('plus')}</button></li>
     </ol>
     ${total ? '<p class="list-hint">工程を長押しすると、直したりワンポイントを付けたりできます</p>' : ''}
     <div class="actions">
