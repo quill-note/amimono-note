@@ -186,10 +186,37 @@ main{max-width:640px;margin:0 auto;padding:14px 16px calc(env(safe-area-inset-bo
 .yarns{display:flex;flex-wrap:wrap;gap:4px 10px}
 .yarns .yl{display:inline-flex;align-items:center;gap:4px}
 .photo-btns{display:flex;gap:8px;margin-top:8px}
-.photo-btns .btn{flex:1;padding:9px}
+.photo-btns .btn{flex:1;padding:9px 2px;font-size:12px;gap:2px;min-width:0;white-space:nowrap}
+.photo-btns .btn svg.ic{width:15px;height:15px}
 .photo-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:14px;border:2px dashed var(--primary-light);border-radius:12px;background:var(--primary-pale);color:var(--primary);font-size:14px;font-weight:700;cursor:pointer}
 .file-in{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
 .photo-add,.photo-btns label{position:relative}
+.photo-adds{display:flex;gap:8px}
+.photo-adds .photo-add{flex:1}
+/* トリミング画面 */
+#cropper{position:fixed;inset:0;z-index:1090;background:#101a17;color:#fff;display:none;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#cropper.open{display:flex}
+.crop-head{display:flex;align-items:center;gap:8px;padding:12px 16px;font-size:16px;font-weight:700}
+.crop-head svg.ic{width:20px;height:20px}
+.crop-stage{flex:1;min-height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:none;user-select:none;-webkit-user-select:none}
+.crop-wrap{position:relative}
+.crop-wrap canvas{display:block;width:100%;height:100%}
+.crop-box{position:absolute;box-shadow:0 0 0 9999px rgba(0,0,0,.58);outline:2px solid #fff;cursor:move;touch-action:none}
+.crop-box::before,.crop-box::after{content:"";position:absolute;inset:0;pointer-events:none;border:0 solid rgba(255,255,255,.45)}
+.crop-box::before{left:33.33%;right:33.33%;border-width:0 1px}
+.crop-box::after{top:33.33%;bottom:33.33%;border-width:1px 0}
+.crop-h{position:absolute;width:34px;height:34px;touch-action:none}
+.crop-h::after{content:"";position:absolute;width:16px;height:16px;border:0 solid #fff}
+.crop-h.nw{left:-12px;top:-12px}.crop-h.nw::after{left:9px;top:9px;border-width:4px 0 0 4px}
+.crop-h.ne{right:-12px;top:-12px}.crop-h.ne::after{right:9px;top:9px;border-width:4px 4px 0 0}
+.crop-h.sw{left:-12px;bottom:-12px}.crop-h.sw::after{left:9px;bottom:9px;border-width:0 0 4px 4px}
+.crop-h.se{right:-12px;bottom:-12px}.crop-h.se::after{right:9px;bottom:9px;border-width:0 4px 4px 0}
+.crop-tools{display:flex;gap:6px;justify-content:center;align-items:center;padding:12px 12px 4px;flex-wrap:wrap}
+.crop-tools button{border:1.5px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:16px;padding:5px 12px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+.crop-tools button.on{background:var(--primary);border-color:var(--primary)}
+.crop-tools svg.ic{width:16px;height:16px}
+.crop-acts{display:flex;gap:10px;padding:10px 16px 16px}
+.crop-acts .btn{flex:1}
 .thumb{flex:none;width:52px;height:52px;border-radius:10px;object-fit:cover;background:var(--surface2)}
 .prev{display:flex;flex-direction:column;gap:6px;margin-top:6px}
 .prev button{text-align:left;border:1.5px solid var(--border);background:var(--surface2);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text2)}
@@ -291,6 +318,9 @@ const ICONS = {
   copy:     '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
   bulb:     '<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2V16h5v-.2c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3z"/>',
   ruler:    '<path d="M21.3 15.3 8.7 2.7a1 1 0 0 0-1.4 0L2.7 7.3a1 1 0 0 0 0 1.4l12.6 12.6a1 1 0 0 0 1.4 0l4.6-4.6a1 1 0 0 0 0-1.4z"/><path d="m7.5 10.5 2-2"/><path d="m10.5 13.5 2-2"/><path d="m13.5 16.5 2-2"/>',
+  image:    '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/>',
+  crop:     '<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>',
+  rotate:   '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
   camera:   '<path d="M14.5 4h-5L7.5 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.5z"/><circle cx="12" cy="13" r="3.5"/>',
   clock:    '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M10 2h4"/>',
   play:     '<path d="M7 4.5v15l12-7.5z"/>',
@@ -945,10 +975,12 @@ async function pullPhotos() {
 let pendingPhoto;
 function photoBox(id) {
   const src = typeof pendingPhoto === 'string' ? pendingPhoto : pendingPhoto === null ? null : id;
-  const input = `<input type="file" accept="image/*" class="file-in" id="photoFile">`;
-  if (!src) return `<label class="photo-add">${ic('camera')}できあがりの写真を追加${input}</label>`;
+  // capture付きはスマホでそのままカメラが起動する。もう一方は写真フォルダから選ぶ
+  const cam = `<input type="file" accept="image/*" capture="environment" class="file-in photo-file">`;
+  const pick = `<input type="file" accept="image/*" class="file-in photo-file">`;
+  if (!src) return `<div class="photo-adds"><label class="photo-add">${ic('camera')}撮る${cam}</label><label class="photo-add">${ic('image')}選ぶ${pick}</label></div><p class="photo-hint">できあがりの写真を追加（あとで切り取りもできます）</p>`;
   const img = typeof pendingPhoto === 'string' ? `<img class="photo-lg" src="${pendingPhoto}" alt="">` : `<img class="photo-lg" data-photo="${esc(id)}" alt="">`;
-  return `${img}<div class="photo-btns"><label class="btn outline">${ic('camera')}変える${input}</label><button class="btn" data-action="photodel">外す</button></div>`;
+  return `${img}<div class="photo-btns"><label class="btn outline">${ic('camera')}撮る${cam}</label><label class="btn outline">${ic('image')}選ぶ${pick}</label><button class="btn outline" data-action="photocrop">${ic('crop')}切り取り</button><button class="btn" data-action="photodel">外す</button></div>`;
 }
 function refreshPhotoBox() {
   const box = document.getElementById('photoBox');
@@ -962,6 +994,122 @@ async function commitPhoto(oldId) {
   if (pendingPhoto === null) return undefined;
   const id = uid(); await putPhoto(id, pendingPhoto); return id;
 }
+
+/* ===== トリミング =====
+   撮った（選んだ）写真をその場で切り取る。cropPhoto(ファイル or dataURL) → 縮めたdataURL（やめたら null）
+   枠は元画像のピクセルで持つので、画面の向きが変わってもずれない */
+const cropEl = document.createElement('div'); cropEl.id = 'cropper'; document.body.appendChild(cropEl);
+const CROP_RATIOS = [['自由', 0], ['正方形', 1], ['4:3', 4 / 3], ['3:4', 3 / 4]];
+let crop = null;
+async function loadSrc(src) {
+  const url = typeof src === 'string' ? src : URL.createObjectURL(src);
+  try {
+    const img = new Image(); img.src = url; await img.decode();
+    // 大きすぎる写真はメモリを食うので長い辺2000pxまでにしてから扱う
+    const k = Math.min(1, 2000 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return c;
+  } finally { if (typeof src !== 'string') URL.revokeObjectURL(url); }
+}
+async function cropPhoto(src) {
+  const c = await loadSrc(src);
+  return new Promise(resolve => {
+    crop = { c, ratio: 0, rect: { x: 0, y: 0, w: c.width, h: c.height }, k: 1, resolve };
+    cropEl.innerHTML = `<div class="crop-head">${ic('crop')}写真を切り取る</div>
+      <div class="crop-stage" id="cropStage"><div class="crop-wrap" id="cropWrap"><div class="crop-box" id="cropBox" data-drag="move">
+        <span class="crop-h nw" data-drag="nw"></span><span class="crop-h ne" data-drag="ne"></span><span class="crop-h sw" data-drag="sw"></span><span class="crop-h se" data-drag="se"></span>
+      </div></div></div>
+      <div class="crop-tools">${CROP_RATIOS.map(([l, r]) => `<button data-ratio="${r}" class="${r ? '' : 'on'}">${l}</button>`).join('')}<button data-crop="rotate" aria-label="回転">${ic('rotate')}回転</button></div>
+      <div class="crop-acts"><button class="btn" data-crop="cancel">やめる</button><button class="btn primary" data-crop="ok">${ic('check')}これで決定</button></div>`;
+    document.getElementById('cropWrap').prepend(c);
+    cropEl.classList.add('open');
+    cropLayout();
+  });
+}
+function cropLayout() {
+  if (!crop) return;
+  const st = document.getElementById('cropStage'), wrap = document.getElementById('cropWrap');
+  const k = Math.min((st.clientWidth - 32) / crop.c.width, (st.clientHeight - 32) / crop.c.height);
+  crop.k = k;
+  wrap.style.width = crop.c.width * k + 'px'; wrap.style.height = crop.c.height * k + 'px';
+  cropDraw();
+}
+function cropDraw() {
+  const { rect: r, k } = crop, b = document.getElementById('cropBox');
+  Object.assign(b.style, { left: r.x * k + 'px', top: r.y * k + 'px', width: r.w * k + 'px', height: r.h * k + 'px' });
+}
+// 比率を変えたら、その比率でいちばん大きい枠を真ん中に
+function cropSetRatio(ratio) {
+  crop.ratio = ratio;
+  const W = crop.c.width, H = crop.c.height;
+  let w = W, h = H;
+  if (ratio) { if (W / H > ratio) w = H * ratio; else h = W / ratio; }
+  crop.rect = { x: (W - w) / 2, y: (H - h) / 2, w, h };
+  cropEl.querySelectorAll('[data-ratio]').forEach(b => b.classList.toggle('on', +b.dataset.ratio === ratio));
+  cropDraw();
+}
+function cropRotate() {
+  const o = crop.c, c = document.createElement('canvas');
+  c.width = o.height; c.height = o.width;
+  const g = c.getContext('2d'); g.translate(c.width, 0); g.rotate(Math.PI / 2); g.drawImage(o, 0, 0);
+  o.replaceWith(c); crop.c = c;
+  // 縦横が入れ替わるので、3:4 と 4:3 も入れ替える
+  const r = crop.ratio && crop.ratio !== 1 ? 1 / crop.ratio : crop.ratio;
+  cropLayout(); cropSetRatio(CROP_RATIOS.find(x => Math.abs(x[1] - r) < .01)?.[1] ?? 0);
+}
+function cropClose(v) {
+  const r = crop?.resolve; crop = null;
+  cropEl.classList.remove('open'); cropEl.innerHTML = '';
+  r?.(v);
+}
+function cropFinish() {
+  const { c, rect: r } = crop;
+  const k = Math.min(1, 800 / Math.max(r.w, r.h));   // 保存はこれまでどおり長い辺800pxまで
+  const o = document.createElement('canvas');
+  o.width = Math.max(1, Math.round(r.w * k)); o.height = Math.max(1, Math.round(r.h * k));
+  o.getContext('2d').drawImage(c, r.x, r.y, r.w, r.h, 0, 0, o.width, o.height);
+  cropClose(o.toDataURL('image/jpeg', 0.75));
+}
+let cropDrag = null;
+cropEl.addEventListener('pointerdown', e => {
+  const h = e.target.closest('[data-drag]');
+  if (!h || !crop) return;
+  e.preventDefault(); h.setPointerCapture(e.pointerId);
+  cropDrag = { mode: h.dataset.drag, x: e.clientX, y: e.clientY, r: { ...crop.rect }, el: h };
+});
+cropEl.addEventListener('pointermove', e => {
+  if (!cropDrag || !crop) return;
+  const { mode, r: s } = cropDrag, k = crop.k, W = crop.c.width, H = crop.c.height;
+  const dx = (e.clientX - cropDrag.x) / k, dy = (e.clientY - cropDrag.y) / k;
+  if (mode === 'move') {
+    crop.rect = { ...s, x: Math.min(Math.max(0, s.x + dx), W - s.w), y: Math.min(Math.max(0, s.y + dy), H - s.h) };
+  } else {
+    // 反対側の角を止めたまま広げる・縮める
+    const west = mode.includes('w'), north = mode.includes('n');
+    const ax = west ? s.x + s.w : s.x, ay = north ? s.y + s.h : s.y;
+    const px = (west ? s.x : s.x + s.w) + dx, py = (north ? s.y : s.y + s.h) + dy;
+    const maxW = west ? ax : W - ax, maxH = north ? ay : H - ay, min = 40 / k;
+    let w = Math.min(Math.max(west ? ax - px : px - ax, min), maxW);
+    let h = Math.min(Math.max(north ? ay - py : py - ay, min), maxH);
+    const ratio = crop.ratio;
+    if (ratio) { if (w / h > ratio) w = h * ratio; else h = w / ratio; }
+    crop.rect = { x: west ? ax - w : ax, y: north ? ay - h : ay, w, h };
+  }
+  cropDraw();
+});
+['pointerup', 'pointercancel'].forEach(t => cropEl.addEventListener(t, () => { cropDrag = null; }));
+cropEl.addEventListener('click', e => {
+  e.stopPropagation();   // 後ろのモーダルに伝わらないように
+  const rb = e.target.closest('[data-ratio]');
+  if (rb) return cropSetRatio(+rb.dataset.ratio);
+  const a = e.target.closest('[data-crop]')?.dataset.crop;
+  if (a === 'cancel') cropClose(null);
+  if (a === 'ok') cropFinish();
+  if (a === 'rotate') cropRotate();
+});
+window.addEventListener('resize', () => cropLayout());
 
 /* ===== 描画 ===== */
 function render() {
@@ -1593,6 +1741,12 @@ document.addEventListener('click', e => {
     case 'viewrec': openRecord(id); break;
     case 'saverec': saveRecord(id); break;
     case 'photodel': pendingPhoto = null; refreshPhotoBox(); break;
+    case 'photocrop': (async () => {
+      const src = typeof pendingPhoto === 'string' ? pendingPhoto : await getPhoto(document.getElementById('photoBox')?.dataset.id);
+      if (!src) return;
+      try { const d = await cropPhoto(src); if (d) { pendingPhoto = d; refreshPhotoBox(); } }
+      catch (err) { toast('写真を読み込めませんでした'); }
+    })(); break;
     case 'delrec':
       askConfirm('この記録を削除しますか？', { ok: '削除', danger: true }).then(ok => { if (ok) { delPhoto(state.records.find(r => r.id === id)?.photo); state.records = state.records.filter(r => r.id !== id); save(); update(); toast('削除しました'); } else openRecord(id); });
       break;
@@ -1705,8 +1859,9 @@ document.addEventListener('keydown', e => {
 document.addEventListener('change', async e => {
   if (e.target.id === 'wakeToggle') { try { localStorage.setItem(WAKE_KEY, e.target.checked ? '1' : '0'); } catch (err) {} syncWake(); toast(e.target.checked ? '編んでいる間は画面を消さないようにしました' : '画面はふだんどおり消えます'); }
   if (e.target.classList?.contains('hook-in')) e.target.value = normHook(e.target.value);
-  if (e.target.id === 'photoFile' && e.target.files[0]) {
-    try { pendingPhoto = await shrink(e.target.files[0]); refreshPhotoBox(); }
+  if (e.target.classList?.contains('photo-file') && e.target.files[0]) {
+    const f = e.target.files[0]; e.target.value = '';
+    try { const d = await cropPhoto(f); if (d) { pendingPhoto = d; refreshPhotoBox(); } }
     catch (err) { toast('写真を読み込めませんでした'); }
   }
 });

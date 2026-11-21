@@ -1,6 +1,6 @@
 // オフライン対応用。ネット優先で最新を取りに行き、つながらないときだけキャッシュを使う。
 // （GitHubで更新したのに反映されない…を避けるため）
-const CACHE = 'amimono-note-v3';
+const CACHE = 'amimono-note-v4';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
